@@ -12,6 +12,10 @@ use std::sync::PoisonError;
 use std::sync::TryLockError;
 use std::sync::TryLockResult;
 
+use lazy_static::lazy_static;
+
+use crate::graph::DiGraph;
+
 mod graph;
 
 /// Counter for Mutex IDs. Atomic avoids the need for locking.
@@ -23,6 +27,10 @@ thread_local! {
     /// Assuming that locks are roughly released in the reverse order in which they were acquired,
     /// a stack should be more efficient to keep track of the current state than a set would be.
     static HELD_LOCKS: RefCell<Vec<usize>> = RefCell::new(Vec::new());
+}
+
+lazy_static! {
+    static ref DEPENDENCY_GRAPH: Mutex<DiGraph> = Default::default();
 }
 
 /// Wrapper for std::sync::Mutex
@@ -45,6 +53,57 @@ fn next_mutex_id() -> usize {
         .expect("Mutex ID wraparound happened, results unreliable")
 }
 
+/// Get a reference to the current dependency graph
+fn get_depedency_graph() -> impl DerefMut<Target = DiGraph> {
+    DEPENDENCY_GRAPH
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Register that a lock is currently held
+fn register_lock(lock: usize) {
+    HELD_LOCKS.with(|locks| locks.borrow_mut().push(lock))
+}
+
+/// Register a dependency in the dependency graph
+///
+/// If the dependency is new, check for cycles in the dependency graph. If not, there shouldn't be
+/// any cycles so we don't need to check.
+fn register_dependency(lock: usize) {
+    HELD_LOCKS.with(|locks| {
+        if let Some(&previous) = locks.borrow().last() {
+            let mut graph = get_depedency_graph();
+
+            if graph.add_edge(previous, lock) && graph.has_cycles() {
+                panic!("Mutex order graph should not have cycles");
+            }
+        }
+    })
+}
+
+fn map_lockresult<T, I, F>(result: LockResult<I>, mapper: F) -> LockResult<T>
+where
+    F: FnOnce(I) -> T,
+{
+    match result {
+        Ok(inner) => Ok(mapper(inner)),
+        Err(poisoned) => Err(PoisonError::new(mapper(poisoned.into_inner()))),
+    }
+}
+
+fn map_trylockresult<T, I, F>(result: TryLockResult<I>, mapper: F) -> TryLockResult<T>
+where
+    F: FnOnce(I) -> T,
+{
+    match result {
+        Ok(inner) => Ok(mapper(inner)),
+        Err(TryLockError::WouldBlock) => Err(TryLockError::WouldBlock),
+        Err(TryLockError::Poisoned(poisoned)) => {
+            Err(PoisonError::new(mapper(poisoned.into_inner())).into())
+        }
+    }
+}
+
 impl<T> TracingMutex<T> {
     pub fn new(t: T) -> Self {
         Self {
@@ -53,33 +112,32 @@ impl<T> TracingMutex<T> {
         }
     }
 
+    #[track_caller]
     pub fn lock(&self) -> LockResult<TracingMutexGuard<T>> {
+        register_dependency(self.id);
         let result = self.inner.lock();
-        self.register_lock();
+        register_lock(self.id);
 
         let mapper = |guard| TracingMutexGuard {
             mutex: self,
             inner: guard,
         };
 
-        result
-            .map(mapper)
-            .map_err(|poison| PoisonError::new(mapper(poison.into_inner())))
+        map_lockresult(result, mapper)
     }
 
+    #[track_caller]
     pub fn try_lock(&self) -> TryLockResult<TracingMutexGuard<T>> {
+        register_dependency(self.id);
         let result = self.inner.try_lock();
-        self.register_lock();
+        register_lock(self.id);
 
         let mapper = |guard| TracingMutexGuard {
             mutex: self,
             inner: guard,
         };
 
-        result.map(mapper).map_err(|error| match error {
-            TryLockError::Poisoned(poison) => PoisonError::new(mapper(poison.into_inner())).into(),
-            TryLockError::WouldBlock => TryLockError::WouldBlock,
-        })
+        map_trylockresult(result, mapper)
     }
 
     pub fn get_id(&self) -> usize {
@@ -93,10 +151,6 @@ impl<T> TracingMutex<T> {
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         self.inner.get_mut()
     }
-
-    fn register_lock(&self) {
-        HELD_LOCKS.with(|locks| locks.borrow_mut().push(self.id))
-    }
 }
 
 impl<T: ?Sized + Default> Default for TracingMutex<T> {
@@ -108,6 +162,14 @@ impl<T: ?Sized + Default> Default for TracingMutex<T> {
 impl<T> From<T> for TracingMutex<T> {
     fn from(t: T) -> Self {
         Self::new(t)
+    }
+}
+
+impl<T> Drop for TracingMutex<T> {
+    fn drop(&mut self) {
+        let id = self.id;
+
+        get_depedency_graph().remove_node(id);
     }
 }
 
@@ -156,6 +218,11 @@ mod tests {
 
     use super::*;
 
+    lazy_static! {
+        /// Mutex to isolate tests manipulating the global mutex graph
+        static ref GRAPH_MUTEX: Mutex<()> = Mutex::new(());
+    }
+
     #[test]
     fn test_next_mutex_id() {
         let initial = next_mutex_id();
@@ -167,6 +234,8 @@ mod tests {
 
     #[test]
     fn test_mutex_usage() {
+        let _graph_lock = GRAPH_MUTEX.lock();
+
         let mutex = Arc::new(TracingMutex::new(()));
         let mutex_clone = mutex.clone();
 
@@ -180,5 +249,22 @@ mod tests {
         });
 
         handle.join().unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Mutex order graph should not have cycles")]
+    fn test_detect_cycle() {
+        let _graph_lock = GRAPH_MUTEX.lock();
+
+        let a = TracingMutex::new(());
+        let b = TracingMutex::new(());
+
+        let hold_a = a.lock().unwrap();
+        let _ = b.lock();
+
+        drop(hold_a);
+
+        let _hold_b = b.lock().unwrap();
+        let _ = a.lock();
     }
 }
