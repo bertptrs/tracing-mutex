@@ -30,15 +30,15 @@ use std::sync::TryLockResult;
 
 use crate::drop_lock;
 use crate::get_depedency_graph;
-use crate::next_mutex_id;
 use crate::register_dependency;
 use crate::register_lock;
+use crate::MutexID;
 
 /// Wrapper for `std::sync::Mutex`
 #[derive(Debug)]
 pub struct TracingMutex<T> {
     inner: Mutex<T>,
-    id: usize,
+    id: MutexID,
 }
 
 /// Wrapper for `std::sync::MutexGuard`
@@ -75,7 +75,7 @@ impl<T> TracingMutex<T> {
     pub fn new(t: T) -> Self {
         Self {
             inner: Mutex::new(t),
-            id: next_mutex_id(),
+            id: MutexID::new(),
         }
     }
 
@@ -105,10 +105,6 @@ impl<T> TracingMutex<T> {
         };
 
         map_trylockresult(result, mapper)
-    }
-
-    pub fn get_id(&self) -> usize {
-        self.id
     }
 
     pub fn is_poisoned(&self) -> bool {
@@ -182,7 +178,7 @@ impl<'a, T> Drop for TracingMutexGuard<'a, T> {
 #[derive(Debug)]
 pub struct TracingRwLock<T> {
     inner: RwLock<T>,
-    id: usize,
+    id: MutexID,
 }
 
 /// Hybrid wrapper for both `std::sync::RwLockReadGuard` and `std::sync::RwLockWriteGuard`.
@@ -203,12 +199,8 @@ impl<T> TracingRwLock<T> {
     pub fn new(t: T) -> Self {
         Self {
             inner: RwLock::new(t),
-            id: next_mutex_id(),
+            id: MutexID::new(),
         }
-    }
-
-    pub fn get_id(&self) -> usize {
-        self.id
     }
 
     #[track_caller]

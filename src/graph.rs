@@ -1,21 +1,23 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use crate::MutexID;
+
 #[derive(Clone, Default, Debug)]
 pub struct DiGraph {
-    in_edges: HashMap<usize, Vec<usize>>,
-    out_edges: HashMap<usize, Vec<usize>>,
+    in_edges: HashMap<MutexID, Vec<MutexID>>,
+    out_edges: HashMap<MutexID, Vec<MutexID>>,
 }
 
 impl DiGraph {
-    fn add_node(&mut self, node: usize) -> (&mut Vec<usize>, &mut Vec<usize>) {
+    fn add_node(&mut self, node: MutexID) -> (&mut Vec<MutexID>, &mut Vec<MutexID>) {
         let in_edges = self.in_edges.entry(node).or_default();
         let out_edges = self.out_edges.entry(node).or_default();
 
         (in_edges, out_edges)
     }
 
-    pub fn remove_node(&mut self, node: usize) -> bool {
+    pub(crate) fn remove_node(&mut self, node: MutexID) -> bool {
         match self.out_edges.remove(&node) {
             None => false,
             Some(out_edges) => {
@@ -38,7 +40,10 @@ impl DiGraph {
         }
     }
 
-    pub fn add_edge(&mut self, from: usize, to: usize) -> bool {
+    /// Add an edge to the graph
+    ///
+    /// Nodes, both from and to, are created as needed when creating new edges.
+    pub(crate) fn add_edge(&mut self, from: MutexID, to: MutexID) -> bool {
         if from == to {
             return false;
         }
@@ -65,7 +70,12 @@ impl DiGraph {
             .any(|node| !self.visit(node, &mut marks, &mut temp))
     }
 
-    fn visit(&self, node: usize, marks: &mut HashSet<usize>, temp: &mut HashSet<usize>) -> bool {
+    fn visit(
+        &self,
+        node: MutexID,
+        marks: &mut HashSet<MutexID>,
+        temp: &mut HashSet<MutexID>,
+    ) -> bool {
         if marks.contains(&node) {
             return true;
         }
@@ -92,25 +102,29 @@ impl DiGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::DiGraph;
+    use super::*;
+    use crate::MutexID;
 
     #[test]
     fn test_digraph() {
+        let id: Vec<MutexID> = (0..5).map(|_| MutexID::new()).collect();
         let mut graph = DiGraph::default();
 
-        graph.add_edge(1, 2);
-        graph.add_edge(2, 3);
-        graph.add_edge(3, 4);
-        graph.add_edge(5, 2);
+        // Add some safe edges
+        graph.add_edge(id[0], id[1]);
+        graph.add_edge(id[1], id[2]);
+        graph.add_edge(id[2], id[3]);
+        graph.add_edge(id[4], id[2]);
 
+        // Should not have a cycle yet
         assert!(!graph.has_cycles());
 
-        graph.add_edge(4, 2);
-
+        // Introduce cycle 3 → 1 → 2 → 3
+        graph.add_edge(id[3], id[1]);
         assert!(graph.has_cycles());
 
-        assert!(graph.remove_node(4));
-
+        // Removing 3 should remove that cycle
+        assert!(graph.remove_node(id[3]));
         assert!(!graph.has_cycles())
     }
 }

@@ -13,6 +13,8 @@ mod graph;
 pub mod stdsync;
 
 /// Counter for Mutex IDs. Atomic avoids the need for locking.
+///
+/// Should be part of the `MutexID` impl but static items are not yet a thing.
 static ID_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
 
 thread_local! {
@@ -20,17 +22,40 @@ thread_local! {
     ///
     /// Assuming that locks are roughly released in the reverse order in which they were acquired,
     /// a stack should be more efficient to keep track of the current state than a set would be.
-    static HELD_LOCKS: RefCell<Vec<usize>> = RefCell::new(Vec::new());
+    static HELD_LOCKS: RefCell<Vec<MutexID>> = RefCell::new(Vec::new());
 }
 
 lazy_static! {
     static ref DEPENDENCY_GRAPH: Mutex<DiGraph> = Default::default();
 }
 
-fn next_mutex_id() -> usize {
-    ID_SEQUENCE
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |id| id.checked_add(1))
-        .expect("Mutex ID wraparound happened, results unreliable")
+/// Dedicated ID type for Mutexes
+///
+/// # Unstable
+///
+/// This type is currently private to prevent usage while the exact implementation is figured out,
+/// but it will likely be public in the future.
+///
+/// One possible alteration is to make this type not `Copy` but `Drop`, and handle deregistering
+/// the lock from there.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+struct MutexID(usize);
+
+impl MutexID {
+    /// Get a new, unique, mutex ID.
+    ///
+    /// This ID is guaranteed to be unique within the runtime of the program.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic when there are no more mutex IDs available. The number of mutex ids
+    /// is `usize::MAX - 1` which should be plenty for most practical applications.
+    pub fn new() -> Self {
+        ID_SEQUENCE
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |id| id.checked_add(1))
+            .map(|id| Self(id))
+            .expect("Mutex ID wraparound happened, results unreliable")
+    }
 }
 
 /// Get a reference to the current dependency graph
@@ -41,11 +66,17 @@ fn get_depedency_graph() -> impl DerefMut<Target = DiGraph> {
 }
 
 /// Register that a lock is currently held
-fn register_lock(lock: usize) {
+fn register_lock(lock: MutexID) {
     HELD_LOCKS.with(|locks| locks.borrow_mut().push(lock))
 }
 
-fn drop_lock(id: usize) {
+/// Drop a lock held by the current thread.
+///
+/// # Panics
+///
+/// This function panics if the lock did not appear to be handled by this thread. If that happens,
+/// that is an indication of a serious design flaw in this library.
+fn drop_lock(id: MutexID) {
     HELD_LOCKS.with(|locks| {
         let mut locks = locks.borrow_mut();
 
@@ -56,7 +87,7 @@ fn drop_lock(id: usize) {
             }
         }
 
-        panic!("Tried to drop lock for mutex {} but it wasn't held", id)
+        panic!("Tried to drop lock for mutex {:?} but it wasn't held", id)
     });
 }
 
@@ -64,16 +95,23 @@ fn drop_lock(id: usize) {
 ///
 /// If the dependency is new, check for cycles in the dependency graph. If not, there shouldn't be
 /// any cycles so we don't need to check.
-fn register_dependency(lock: usize) {
-    HELD_LOCKS.with(|locks| {
+///
+/// # Panics
+///
+/// This function panics if the new dependency would introduce a cycle.
+fn register_dependency(lock: MutexID) {
+    if HELD_LOCKS.with(|locks| {
         if let Some(&previous) = locks.borrow().last() {
             let mut graph = get_depedency_graph();
 
-            if graph.add_edge(previous, lock) && graph.has_cycles() {
-                panic!("Mutex order graph should not have cycles");
-            }
+            graph.add_edge(previous, lock) && graph.has_cycles()
+        } else {
+            false
         }
-    })
+    }) {
+        // Panic without holding the lock to avoid needlessly poisoning it
+        panic!("Mutex order graph should not have cycles");
+    }
 }
 
 #[cfg(test)]
@@ -87,10 +125,10 @@ mod tests {
 
     #[test]
     fn test_next_mutex_id() {
-        let initial = next_mutex_id();
-        let next = next_mutex_id();
+        let initial = MutexID::new();
+        let next = MutexID::new();
 
         // Can't assert N + 1 because multiple threads running tests
-        assert!(initial < next);
+        assert!(initial.0 < next.0);
     }
 }
