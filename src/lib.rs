@@ -53,7 +53,7 @@ impl MutexID {
     pub fn new() -> Self {
         ID_SEQUENCE
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |id| id.checked_add(1))
-            .map(|id| Self(id))
+            .map(Self)
             .expect("Mutex ID wraparound happened, results unreliable")
     }
 }
@@ -100,7 +100,7 @@ fn drop_lock(id: MutexID) {
 ///
 /// This function panics if the new dependency would introduce a cycle.
 fn register_dependency(lock: MutexID) {
-    if HELD_LOCKS.with(|locks| {
+    let creates_cycle = HELD_LOCKS.with(|locks| {
         if let Some(&previous) = locks.borrow().last() {
             let mut graph = get_depedency_graph();
 
@@ -108,7 +108,9 @@ fn register_dependency(lock: MutexID) {
         } else {
             false
         }
-    }) {
+    });
+
+    if creates_cycle {
         // Panic without holding the lock to avoid needlessly poisoning it
         panic!("Mutex order graph should not have cycles");
     }
