@@ -56,19 +56,38 @@ impl MutexID {
             .map(Self)
             .expect("Mutex ID wraparound happened, results unreliable")
     }
+
+    /// Get a borrowed guard for this lock.
+    ///
+    /// This method adds checks adds this Mutex ID to the dependency graph as needed, and adds the
+    /// lock to the list of
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the new dependency would introduce a cycle.
+    pub fn get_borrowed(self) -> BorrowedMutex {
+        let creates_cycle = HELD_LOCKS.with(|locks| {
+            if let Some(&previous) = locks.borrow().last() {
+                let mut graph = get_depedency_graph();
+
+                graph.add_edge(previous, self) && graph.has_cycles()
+            } else {
+                false
+            }
+        });
+
+        if creates_cycle {
+            // Panic without holding the lock to avoid needlessly poisoning it
+            panic!("Mutex order graph should not have cycles");
+        }
+
+        HELD_LOCKS.with(|locks| locks.borrow_mut().push(self));
+        BorrowedMutex(self)
+    }
 }
 
-/// Get a reference to the current dependency graph
-fn get_depedency_graph() -> impl DerefMut<Target = DiGraph> {
-    DEPENDENCY_GRAPH
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-}
-
-/// Register that a lock is currently held
-fn register_lock(lock: MutexID) {
-    HELD_LOCKS.with(|locks| locks.borrow_mut().push(lock))
-}
+#[derive(Debug)]
+struct BorrowedMutex(MutexID);
 
 /// Drop a lock held by the current thread.
 ///
@@ -76,44 +95,31 @@ fn register_lock(lock: MutexID) {
 ///
 /// This function panics if the lock did not appear to be handled by this thread. If that happens,
 /// that is an indication of a serious design flaw in this library.
-fn drop_lock(id: MutexID) {
-    HELD_LOCKS.with(|locks| {
-        let mut locks = locks.borrow_mut();
+impl Drop for BorrowedMutex {
+    fn drop(&mut self) {
+        let id = self.0;
 
-        for (i, &lock) in locks.iter().enumerate().rev() {
-            if lock == id {
-                locks.remove(i);
-                return;
+        HELD_LOCKS.with(|locks| {
+            let mut locks = locks.borrow_mut();
+
+            for (i, &lock) in locks.iter().enumerate().rev() {
+                if lock == id {
+                    locks.remove(i);
+                    return;
+                }
             }
-        }
 
-        panic!("Tried to drop lock for mutex {:?} but it wasn't held", id)
-    });
+            // Drop impls shouldn't panic but if this happens something is seriously broken.
+            unreachable!("Tried to drop lock for mutex {:?} but it wasn't held", id)
+        });
+    }
 }
 
-/// Register a dependency in the dependency graph
-///
-/// If the dependency is new, check for cycles in the dependency graph. If not, there shouldn't be
-/// any cycles so we don't need to check.
-///
-/// # Panics
-///
-/// This function panics if the new dependency would introduce a cycle.
-fn register_dependency(lock: MutexID) {
-    let creates_cycle = HELD_LOCKS.with(|locks| {
-        if let Some(&previous) = locks.borrow().last() {
-            let mut graph = get_depedency_graph();
-
-            graph.add_edge(previous, lock) && graph.has_cycles()
-        } else {
-            false
-        }
-    });
-
-    if creates_cycle {
-        // Panic without holding the lock to avoid needlessly poisoning it
-        panic!("Mutex order graph should not have cycles");
-    }
+/// Get a reference to the current dependency graph
+fn get_depedency_graph() -> impl DerefMut<Target = DiGraph> {
+    DEPENDENCY_GRAPH
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
 }
 
 #[cfg(test)]
