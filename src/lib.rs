@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fmt;
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -22,7 +23,7 @@ thread_local! {
     ///
     /// Assuming that locks are roughly released in the reverse order in which they were acquired,
     /// a stack should be more efficient to keep track of the current state than a set would be.
-    static HELD_LOCKS: RefCell<Vec<MutexID>> = RefCell::new(Vec::new());
+    static HELD_LOCKS: RefCell<Vec<MutexId>> = RefCell::new(Vec::new());
 }
 
 lazy_static! {
@@ -38,10 +39,10 @@ lazy_static! {
 ///
 /// One possible alteration is to make this type not `Copy` but `Drop`, and handle deregistering
 /// the lock from there.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-struct MutexID(usize);
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+struct MutexId(usize);
 
-impl MutexID {
+impl MutexId {
     /// Get a new, unique, mutex ID.
     ///
     /// This ID is guaranteed to be unique within the runtime of the program.
@@ -86,8 +87,14 @@ impl MutexID {
     }
 }
 
+impl fmt::Debug for MutexId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MutexID({:?})", self.0)
+    }
+}
+
 #[derive(Debug)]
-struct BorrowedMutex(MutexID);
+struct BorrowedMutex(MutexId);
 
 /// Drop a lock held by the current thread.
 ///
@@ -133,8 +140,8 @@ mod tests {
 
     #[test]
     fn test_next_mutex_id() {
-        let initial = MutexID::new();
-        let next = MutexID::new();
+        let initial = MutexId::new();
+        let next = MutexId::new();
 
         // Can't assert N + 1 because multiple threads running tests
         assert!(initial.0 < next.0);

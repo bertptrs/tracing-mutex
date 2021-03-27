@@ -30,13 +30,13 @@ use std::sync::TryLockResult;
 
 use crate::get_depedency_graph;
 use crate::BorrowedMutex;
-use crate::MutexID;
+use crate::MutexId;
 
 /// Wrapper for `std::sync::Mutex`
 #[derive(Debug)]
 pub struct TracingMutex<T> {
     inner: Mutex<T>,
-    id: MutexID,
+    id: MutexId,
 }
 
 /// Wrapper for `std::sync::MutexGuard`
@@ -73,7 +73,7 @@ impl<T> TracingMutex<T> {
     pub fn new(t: T) -> Self {
         Self {
             inner: Mutex::new(t),
-            id: MutexID::new(),
+            id: MutexId::new(),
         }
     }
 
@@ -168,7 +168,7 @@ impl<'a, T: fmt::Display> fmt::Display for TracingMutexGuard<'a, T> {
 #[derive(Debug)]
 pub struct TracingRwLock<T> {
     inner: RwLock<T>,
-    id: MutexID,
+    id: MutexId,
 }
 
 /// Hybrid wrapper for both `std::sync::RwLockReadGuard` and `std::sync::RwLockWriteGuard`.
@@ -189,7 +189,7 @@ impl<T> TracingRwLock<T> {
     pub fn new(t: T) -> Self {
         Self {
             inner: RwLock::new(t),
-            id: MutexID::new(),
+            id: MutexId::new(),
         }
     }
 
