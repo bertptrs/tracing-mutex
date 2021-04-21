@@ -1,4 +1,4 @@
-//! Tracing mutex wrappers for types found in `std::sync`.
+//! Tracing mutex wrappers for locks found in `std::sync`.
 //!
 //! This module provides wrappers for `std::sync` primitives with exactly the same API and
 //! functionality as their counterparts, with the exception that their acquisition order is
@@ -32,14 +32,40 @@ use crate::get_depedency_graph;
 use crate::BorrowedMutex;
 use crate::MutexId;
 
-/// Wrapper for `std::sync::Mutex`
+/// Debug-only tracing `Mutex`.
+///
+/// Type alias that resolves to [`TracingMutex`] when debug assertions are enabled and to
+/// [`std::sync::Mutex`] when they're not. Use this if you want to have the benefits of cycle
+/// detection in development but do not want to pay the performance penalty in release.
+#[cfg(debug_assertions)]
+pub type DebugMutex<T> = TracingMutex<T>;
+#[cfg(not(debug_assertions))]
+pub type DebugMutex<T> = Mutex<T>;
+
+/// Debug-only tracing `RwLock`.
+///
+/// Type alias that resolves to [`RwLock`] when debug assertions are enabled and to
+/// [`std::sync::RwLock`] when they're not. Use this if you want to have the benefits of cycle
+/// detection in development but do not want to pay the performance penalty in release.
+#[cfg(debug_assertions)]
+pub type DebugRwLock<T> = TracingRwLock<T>;
+#[cfg(not(debug_assertions))]
+pub type DebugRwLock<T> = RwLock<T>;
+
+/// Wrapper for [`std::sync::Mutex`].
+///
+/// Refer to the [crate-level][`crate`] documentaiton for the differences between this struct and
+/// the one it wraps.
 #[derive(Debug)]
 pub struct TracingMutex<T> {
     inner: Mutex<T>,
     id: MutexId,
 }
 
-/// Wrapper for `std::sync::MutexGuard`
+/// Wrapper for [`std::sync::MutexGuard`].
+///
+/// Refer to the [crate-level][`crate`] documentaiton for the differences between this struct and
+/// the one it wraps.
 #[derive(Debug)]
 pub struct TracingMutexGuard<'a, T> {
     inner: MutexGuard<'a, T>,
@@ -164,14 +190,14 @@ impl<'a, T: fmt::Display> fmt::Display for TracingMutexGuard<'a, T> {
     }
 }
 
-/// Wrapper for `std::sync::RwLock`
+/// Wrapper for [`std::sync::RwLock`].
 #[derive(Debug)]
 pub struct TracingRwLock<T> {
     inner: RwLock<T>,
     id: MutexId,
 }
 
-/// Hybrid wrapper for both `std::sync::RwLockReadGuard` and `std::sync::RwLockWriteGuard`.
+/// Hybrid wrapper for both [`std::sync::RwLockReadGuard`] and [`std::sync::RwLockWriteGuard`].
 ///
 /// Please refer to [`TracingReadGuard`] and [`TracingWriteGuard`] for usable types.
 #[derive(Debug)]
@@ -180,9 +206,9 @@ pub struct TracingRwLockGuard<L> {
     mutex: BorrowedMutex,
 }
 
-/// Wrapper around `std::sync::RwLockReadGuard`.
+/// Wrapper around [`std::sync::RwLockReadGuard`].
 pub type TracingReadGuard<'a, T> = TracingRwLockGuard<RwLockReadGuard<'a, T>>;
-/// Wrapper around `std::sync::RwLockWriteGuard`.
+/// Wrapper around [`std::sync::RwLockWriteGuard`].
 pub type TracingWriteGuard<'a, T> = TracingRwLockGuard<RwLockWriteGuard<'a, T>>;
 
 impl<T> TracingRwLock<T> {

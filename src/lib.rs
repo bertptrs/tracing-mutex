@@ -1,3 +1,50 @@
+//! Mutexes can deadlock each other, but you can avoid this by always acquiring your locks in a
+//! consistent order. This crate provides tracing to ensure that you do.
+//!
+//! This crate tracks a virtual "stack" of locks that the current thread holds, and whenever a new
+//! lock is acquired, a dependency is created from the last lock to the new one. These dependencies
+//! together form a graph. As long as that graph does not contain any cycles, your program is
+//! guaranteed to never deadlock.
+//!
+//! # Panics
+//!
+//! The primary method by which this crate signals an invalid lock acquisition order is by
+//! panicking. When a cycle is created in the dependency graph when acquiring a lock, the thread
+//! will instead panic. This panic will not poison the underlying mutex. Each following acquired
+//! that introduces a **new** dependency will also panic, until enough mutexes are deallocated to
+//! break the cycle in the graph.
+//!
+//! # Structure
+//!
+//! Each module in this crate exposes wrappers for a specific base-mutex with dependency trakcing
+//! added. For now, that is limited to [`stdsync`] which provides wrappers for the base locks in the
+//! standard library. More back-ends may be added as features in the future.
+//!
+//! # Performance considerations
+//!
+//! Tracing a mutex adds overhead to certain mutex operations in order to do the required
+//! bookkeeping. The following actions have the following overhead.
+//!
+//! - **Acquiring a lock** locks the global dependency graph temporarily to check if the new lock
+//!   would introduce a cyclic dependency. This crate uses the algorithm proposed in ["A Dynamic
+//!   Topological Sort Algorithm for Directed Acyclic Graphs" by David J. Pearce and Paul H.J.
+//!   Kelly][paper] to detect cycles as efficently as possible. In addition, a thread local lock set
+//!   is updated with the new lock.
+//!
+//! - **Releasing a lock** updates a thread local lock set to remove the released lock.
+//!
+//! - **Allocating a lock** performs an atomic update to a shared counter.
+//!
+//! - **Deallocating a mutex** temporarily locks the global dependency graph to remove the lock from
+//!   it. If the graph contained a cycle, a complete scan of the (now pruned) graph is done to
+//!   determine if this is still the case.
+//!
+//! These operations have been reasonably optimized, but the performance penalty may yet be too much
+//! for production use. In those cases, it may be beneficial to instead use debug-only versions
+//! (such as [`stdsync::DebugMutex`]) which evaluate to a tracing mutex when debug assertions are
+//! enabled, and to the underlying mutex when they're not.
+//!
+//! [paper]: https://whileydave.com/publications/pk07_jea/
 use std::cell::RefCell;
 use std::fmt;
 use std::ops::DerefMut;

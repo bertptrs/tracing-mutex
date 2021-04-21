@@ -7,17 +7,16 @@ type Order = usize;
 
 /// Directed Graph with dynamic topological sorting
 ///
-/// Design and implementation based "A Dynamic Topological Sort Algorithm for
-/// Directed Acyclic Graphs" by David J. Pearce and Paul H.J. Kelly which can
-/// be found on [the author's website][paper].
+/// Design and implementation based "A Dynamic Topological Sort Algorithm for Directed Acyclic
+/// Graphs" by David J. Pearce and Paul H.J. Kelly which can be found on [the author's
+/// website][paper].
 ///
-/// Variable- and method names have been chosen to reflect most closely
-/// resemble the names in the original paper.
+/// Variable- and method names have been chosen to reflect most closely resemble the names in the
+/// original paper.
 ///
-/// This digraph tracks its own topological order and updates it when new edges
-/// are added to the graph. After a cycle has been introduced, the order is no
-/// longer kept up to date as it doesn't exist, but new edges are still
-/// tracked. Nodes are added implicitly when they're used in edges.
+/// This digraph tracks its own topological order and updates it when new edges are added to the
+/// graph. After a cycle has been introduced, the order is no longer kept up to date as it doesn't
+/// exist, but new edges are still tracked. Nodes are added implicitly when they're used in edges.
 ///
 /// [paper]: https://whileydave.com/publications/pk07_jea/
 #[derive(Clone, Default, Debug)]
@@ -36,10 +35,9 @@ pub struct DiGraph {
 impl DiGraph {
     /// Add a new node to the graph.
     ///
-    /// If the node already existed, this function does not add it and uses the
-    /// existing node data. The function returns mutable references to the
-    /// in-edges, out-edges, and finally the index of the node in the topological
-    /// order.
+    /// If the node already existed, this function does not add it and uses the existing node data.
+    /// The function returns mutable references to the in-edges, out-edges, and finally the index of
+    /// the node in the topological order.
     ///
     /// New nodes are appended to the end of the topological order when added.
     fn add_node(&mut self, n: MutexId) -> (&mut HashSet<MutexId>, &mut HashSet<MutexId>, Order) {
@@ -183,8 +181,8 @@ impl DiGraph {
             l.push(v);
         }
 
-        // Original paper cleverly merges the two lists by using that both are
-        // sorted. We just sort again. This is slower but also much simpler.
+        // Original paper cleverly merges the two lists by using that both are sorted. We just sort
+        // again. This is slower but also much simpler.
         orders.sort_unstable();
 
         for (node, order) in l.into_iter().zip(orders) {
