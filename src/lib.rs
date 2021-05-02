@@ -70,11 +70,11 @@ thread_local! {
     ///
     /// Assuming that locks are roughly released in the reverse order in which they were acquired,
     /// a stack should be more efficient to keep track of the current state than a set would be.
-    static HELD_LOCKS: RefCell<Vec<MutexId>> = RefCell::new(Vec::new());
+    static HELD_LOCKS: RefCell<Vec<usize>> = RefCell::new(Vec::new());
 }
 
 lazy_static! {
-    static ref DEPENDENCY_GRAPH: Mutex<DiGraph> = Default::default();
+    static ref DEPENDENCY_GRAPH: Mutex<DiGraph<usize>> = Default::default();
 }
 
 /// Dedicated ID type for Mutexes
@@ -86,7 +86,6 @@ lazy_static! {
 ///
 /// One possible alteration is to make this type not `Copy` but `Drop`, and handle deregistering
 /// the lock from there.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct MutexId(usize);
 
 impl MutexId {
@@ -105,6 +104,10 @@ impl MutexId {
             .expect("Mutex ID wraparound happened, results unreliable")
     }
 
+    pub fn value(&self) -> usize {
+        self.0
+    }
+
     /// Get a borrowed guard for this lock.
     ///
     /// This method adds checks adds this Mutex ID to the dependency graph as needed, and adds the
@@ -113,12 +116,12 @@ impl MutexId {
     /// # Panics
     ///
     /// This method panics if the new dependency would introduce a cycle.
-    pub fn get_borrowed(self) -> BorrowedMutex {
+    pub fn get_borrowed(&self) -> BorrowedMutex {
         let creates_cycle = HELD_LOCKS.with(|locks| {
             if let Some(&previous) = locks.borrow().last() {
                 let mut graph = get_depedency_graph();
 
-                graph.add_edge(previous, self) && graph.has_cycles()
+                graph.add_edge(previous, self.value()) && graph.has_cycles()
             } else {
                 false
             }
@@ -129,7 +132,7 @@ impl MutexId {
             panic!("Mutex order graph should not have cycles");
         }
 
-        HELD_LOCKS.with(|locks| locks.borrow_mut().push(self));
+        HELD_LOCKS.with(|locks| locks.borrow_mut().push(self.value()));
         BorrowedMutex(self)
     }
 }
@@ -140,8 +143,14 @@ impl fmt::Debug for MutexId {
     }
 }
 
+impl Drop for MutexId {
+    fn drop(&mut self) {
+        get_depedency_graph().remove_node(self.value());
+    }
+}
+
 #[derive(Debug)]
-struct BorrowedMutex(MutexId);
+struct BorrowedMutex<'a>(&'a MutexId);
 
 /// Drop a lock held by the current thread.
 ///
@@ -149,7 +158,7 @@ struct BorrowedMutex(MutexId);
 ///
 /// This function panics if the lock did not appear to be handled by this thread. If that happens,
 /// that is an indication of a serious design flaw in this library.
-impl Drop for BorrowedMutex {
+impl<'a> Drop for BorrowedMutex<'a> {
     fn drop(&mut self) {
         let id = self.0;
 
@@ -157,7 +166,7 @@ impl Drop for BorrowedMutex {
             let mut locks = locks.borrow_mut();
 
             for (i, &lock) in locks.iter().enumerate().rev() {
-                if lock == id {
+                if lock == id.value() {
                     locks.remove(i);
                     return;
                 }
@@ -170,7 +179,7 @@ impl Drop for BorrowedMutex {
 }
 
 /// Get a reference to the current dependency graph
-fn get_depedency_graph() -> impl DerefMut<Target = DiGraph> {
+fn get_depedency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
     DEPENDENCY_GRAPH
         .lock()
         .unwrap_or_else(PoisonError::into_inner)

@@ -14,10 +14,8 @@
 //! rwlock.read().unwrap();
 //! ```
 use std::fmt;
-use std::mem;
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::ptr;
 use std::sync::LockResult;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
@@ -28,7 +26,6 @@ use std::sync::RwLockWriteGuard;
 use std::sync::TryLockError;
 use std::sync::TryLockResult;
 
-use crate::get_depedency_graph;
 use crate::BorrowedMutex;
 use crate::MutexId;
 
@@ -69,7 +66,7 @@ pub struct TracingMutex<T> {
 #[derive(Debug)]
 pub struct TracingMutexGuard<'a, T> {
     inner: MutexGuard<'a, T>,
-    mutex: BorrowedMutex,
+    mutex: BorrowedMutex<'a>,
 }
 
 fn map_lockresult<T, I, F>(result: LockResult<I>, mapper: F) -> LockResult<T>
@@ -138,17 +135,7 @@ impl<T> TracingMutex<T> {
     }
 
     pub fn into_inner(self) -> LockResult<T> {
-        self.deregister();
-
-        // Safety: we forget the original immediately after
-        let inner = unsafe { ptr::read(&self.inner) };
-        mem::forget(self);
-
-        inner.into_inner()
-    }
-
-    fn deregister(&self) {
-        get_depedency_graph().remove_node(self.id);
+        self.inner.into_inner()
     }
 }
 
@@ -161,12 +148,6 @@ impl<T: ?Sized + Default> Default for TracingMutex<T> {
 impl<T> From<T> for TracingMutex<T> {
     fn from(t: T) -> Self {
         Self::new(t)
-    }
-}
-
-impl<T> Drop for TracingMutex<T> {
-    fn drop(&mut self) {
-        self.deregister();
     }
 }
 
@@ -201,15 +182,15 @@ pub struct TracingRwLock<T> {
 ///
 /// Please refer to [`TracingReadGuard`] and [`TracingWriteGuard`] for usable types.
 #[derive(Debug)]
-pub struct TracingRwLockGuard<L> {
+pub struct TracingRwLockGuard<'a, L> {
     inner: L,
-    mutex: BorrowedMutex,
+    mutex: BorrowedMutex<'a>,
 }
 
 /// Wrapper around [`std::sync::RwLockReadGuard`].
-pub type TracingReadGuard<'a, T> = TracingRwLockGuard<RwLockReadGuard<'a, T>>;
+pub type TracingReadGuard<'a, T> = TracingRwLockGuard<'a, RwLockReadGuard<'a, T>>;
 /// Wrapper around [`std::sync::RwLockWriteGuard`].
-pub type TracingWriteGuard<'a, T> = TracingRwLockGuard<RwLockWriteGuard<'a, T>>;
+pub type TracingWriteGuard<'a, T> = TracingRwLockGuard<'a, RwLockWriteGuard<'a, T>>;
 
 impl<T> TracingRwLock<T> {
     pub fn new(t: T) -> Self {
@@ -256,24 +237,7 @@ impl<T> TracingRwLock<T> {
     }
 
     pub fn into_inner(self) -> LockResult<T> {
-        self.deregister();
-
-        // Grab our contents and then forget ourselves
-        // Safety: we immediately forget the mutex after copying
-        let inner = unsafe { ptr::read(&self.inner) };
-        mem::forget(self);
-
-        inner.into_inner()
-    }
-
-    fn deregister(&self) {
-        get_depedency_graph().remove_node(self.id);
-    }
-}
-
-impl<T> Drop for TracingRwLock<T> {
-    fn drop(&mut self) {
-        self.deregister();
+        self.inner.into_inner()
     }
 }
 
@@ -286,7 +250,7 @@ where
     }
 }
 
-impl<L, T> Deref for TracingRwLockGuard<L>
+impl<'a, L, T> Deref for TracingRwLockGuard<'a, L>
 where
     L: Deref<Target = T>,
 {
@@ -297,7 +261,7 @@ where
     }
 }
 
-impl<T, L> DerefMut for TracingRwLockGuard<L>
+impl<'a, T, L> DerefMut for TracingRwLockGuard<'a, L>
 where
     L: Deref<Target = T> + DerefMut,
 {

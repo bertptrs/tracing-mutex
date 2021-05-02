@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
-
-use crate::MutexId;
+use std::hash::Hash;
 
 type Order = usize;
 
@@ -20,19 +19,25 @@ type Order = usize;
 ///
 /// [paper]: https://whileydave.com/publications/pk07_jea/
 #[derive(Clone, Default, Debug)]
-pub struct DiGraph {
-    in_edges: HashMap<MutexId, HashSet<MutexId>>,
-    out_edges: HashMap<MutexId, HashSet<MutexId>>,
+pub struct DiGraph<V>
+where
+    V: Eq + Hash + Copy,
+{
+    in_edges: HashMap<V, HashSet<V>>,
+    out_edges: HashMap<V, HashSet<V>>,
     /// Next topological sort order
     next_ord: Order,
     /// Poison flag, set if a cycle is detected when adding a new edge and
     /// unset when removing a node successfully removed the cycle.
     contains_cycle: bool,
     /// Topological sort order. Order is not guaranteed to be contiguous
-    ord: HashMap<MutexId, Order>,
+    ord: HashMap<V, Order>,
 }
 
-impl DiGraph {
+impl<V> DiGraph<V>
+where
+    V: Eq + Hash + Copy,
+{
     /// Add a new node to the graph.
     ///
     /// If the node already existed, this function does not add it and uses the existing node data.
@@ -40,7 +45,7 @@ impl DiGraph {
     /// the node in the topological order.
     ///
     /// New nodes are appended to the end of the topological order when added.
-    fn add_node(&mut self, n: MutexId) -> (&mut HashSet<MutexId>, &mut HashSet<MutexId>, Order) {
+    fn add_node(&mut self, n: V) -> (&mut HashSet<V>, &mut HashSet<V>, Order) {
         let next_ord = &mut self.next_ord;
         let in_edges = self.in_edges.entry(n).or_default();
         let out_edges = self.out_edges.entry(n).or_default();
@@ -54,7 +59,7 @@ impl DiGraph {
         (in_edges, out_edges, order)
     }
 
-    pub(crate) fn remove_node(&mut self, n: MutexId) -> bool {
+    pub(crate) fn remove_node(&mut self, n: V) -> bool {
         match self.out_edges.remove(&n) {
             None => false,
             Some(out_edges) => {
@@ -79,7 +84,7 @@ impl DiGraph {
     /// Add an edge to the graph
     ///
     /// Nodes, both from and to, are created as needed when creating new edges.
-    pub(crate) fn add_edge(&mut self, x: MutexId, y: MutexId) -> bool {
+    pub(crate) fn add_edge(&mut self, x: V, y: V) -> bool {
         if x == y {
             // self-edges are not considered cycles
             return false;
@@ -120,13 +125,7 @@ impl DiGraph {
     }
 
     /// Forwards depth-first-search
-    fn dfs_f(
-        &self,
-        n: MutexId,
-        ub: Order,
-        visited: &mut HashSet<MutexId>,
-        delta_f: &mut Vec<MutexId>,
-    ) -> bool {
+    fn dfs_f(&self, n: V, ub: Order, visited: &mut HashSet<V>, delta_f: &mut Vec<V>) -> bool {
         visited.insert(n);
         delta_f.push(n);
 
@@ -147,13 +146,7 @@ impl DiGraph {
     }
 
     /// Backwards depth-first-search
-    fn dfs_b(
-        &self,
-        n: MutexId,
-        lb: Order,
-        visited: &mut HashSet<MutexId>,
-        delta_b: &mut Vec<MutexId>,
-    ) {
+    fn dfs_b(&self, n: V, lb: Order, visited: &mut HashSet<V>, delta_b: &mut Vec<V>) {
         visited.insert(n);
         delta_b.push(n);
 
@@ -164,7 +157,7 @@ impl DiGraph {
         }
     }
 
-    fn reorder(&mut self, mut delta_f: Vec<MutexId>, mut delta_b: Vec<MutexId>) {
+    fn reorder(&mut self, mut delta_f: Vec<V>, mut delta_b: Vec<V>) {
         self.sort(&mut delta_f);
         self.sort(&mut delta_b);
 
@@ -190,7 +183,7 @@ impl DiGraph {
         }
     }
 
-    fn sort(&self, ids: &mut [MutexId]) {
+    fn sort(&self, ids: &mut [V]) {
         // Can use unstable sort because mutex ids should not be equal
         ids.sort_unstable_by_key(|v| self.ord[v]);
     }
@@ -239,10 +232,10 @@ impl DiGraph {
     /// Helper function for `Self::recompute_topological_order`.
     fn visit(
         &self,
-        v: MutexId,
-        permanent_marks: &mut HashSet<MutexId>,
-        temporary_marks: &mut HashSet<MutexId>,
-        rev_order: &mut Vec<MutexId>,
+        v: V,
+        permanent_marks: &mut HashSet<V>,
+        temporary_marks: &mut HashSet<V>,
+        rev_order: &mut Vec<V>,
     ) -> bool {
         if permanent_marks.contains(&v) {
             return true;
@@ -271,28 +264,26 @@ impl DiGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MutexId;
 
     #[test]
     fn test_digraph() {
-        let id: Vec<MutexId> = (0..5).map(|_| MutexId::new()).collect();
         let mut graph = DiGraph::default();
 
         // Add some safe edges
-        graph.add_edge(id[0], id[1]);
-        graph.add_edge(id[1], id[2]);
-        graph.add_edge(id[2], id[3]);
-        graph.add_edge(id[4], id[2]);
+        graph.add_edge(0, 1);
+        graph.add_edge(1, 2);
+        graph.add_edge(2, 3);
+        graph.add_edge(4, 2);
 
         // Should not have a cycle yet
         assert!(!graph.has_cycles());
 
         // Introduce cycle 3 → 1 → 2 → 3
-        graph.add_edge(id[3], id[1]);
+        graph.add_edge(3, 1);
         assert!(graph.has_cycles());
 
         // Removing 3 should remove that cycle
-        assert!(graph.remove_node(id[3]));
+        assert!(graph.remove_node(3));
         assert!(!graph.has_cycles())
     }
 }
