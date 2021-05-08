@@ -93,6 +93,7 @@ where
 }
 
 impl<T> TracingMutex<T> {
+    /// Create a new tracing mutex with the provided value.
     pub fn new(t: T) -> Self {
         Self {
             inner: Mutex::new(t),
@@ -100,6 +101,12 @@ impl<T> TracingMutex<T> {
         }
     }
 
+    /// Wrapper for [`std::sync::Mutex::lock`].
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
     #[track_caller]
     pub fn lock(&self) -> LockResult<TracingMutexGuard<T>> {
         let mutex = self.id.get_borrowed();
@@ -113,6 +120,12 @@ impl<T> TracingMutex<T> {
         map_lockresult(result, mapper)
     }
 
+    /// Wrapper for [`std::sync::Mutex::try_lock`].
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
     #[track_caller]
     pub fn try_lock(&self) -> TryLockResult<TracingMutexGuard<T>> {
         let mutex = self.id.get_borrowed();
@@ -126,14 +139,19 @@ impl<T> TracingMutex<T> {
         map_trylockresult(result, mapper)
     }
 
+    /// Wrapper for [`std::sync::Mutex::is_poisoned`].
     pub fn is_poisoned(&self) -> bool {
         self.inner.is_poisoned()
     }
 
+    /// Return a mutable reference to the underlying data.
+    ///
+    /// This method does not block as the locking is handled compile-time by the type system.
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         self.inner.get_mut()
     }
 
+    /// Unwrap the mutex and return its inner value.
     pub fn into_inner(self) -> LockResult<T> {
         self.inner.into_inner()
     }
@@ -194,6 +212,12 @@ impl<T> TracingRwLock<T> {
         }
     }
 
+    /// Wrapper for [`std::sync::RwLock::read`].
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
     #[track_caller]
     pub fn read(&self) -> LockResult<TracingReadGuard<T>> {
         let mutex = self.id.get_borrowed();
@@ -202,6 +226,12 @@ impl<T> TracingRwLock<T> {
         map_lockresult(result, |inner| TracingRwLockGuard { inner, mutex })
     }
 
+    /// Wrapper for [`std::sync::RwLock::write`].
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
     #[track_caller]
     pub fn write(&self) -> LockResult<TracingWriteGuard<T>> {
         let mutex = self.id.get_borrowed();
@@ -210,6 +240,12 @@ impl<T> TracingRwLock<T> {
         map_lockresult(result, |inner| TracingRwLockGuard { inner, mutex })
     }
 
+    /// Wrapper for [`std::sync::RwLock::try_read`].
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
     #[track_caller]
     pub fn try_read(&self) -> TryLockResult<TracingReadGuard<T>> {
         let mutex = self.id.get_borrowed();
@@ -218,6 +254,12 @@ impl<T> TracingRwLock<T> {
         map_trylockresult(result, |inner| TracingRwLockGuard { inner, mutex })
     }
 
+    /// Wrapper for [`std::sync::RwLock::try_write`].
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
     #[track_caller]
     pub fn try_write(&self) -> TryLockResult<TracingWriteGuard<T>> {
         let mutex = self.id.get_borrowed();
@@ -226,10 +268,14 @@ impl<T> TracingRwLock<T> {
         map_trylockresult(result, |inner| TracingRwLockGuard { inner, mutex })
     }
 
+    /// Return a mutable reference to the underlying data.
+    ///
+    /// This method does not block as the locking is handled compile-time by the type system.
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         self.inner.get_mut()
     }
 
+    /// Unwrap the mutex and return its inner value.
     pub fn into_inner(self) -> LockResult<T> {
         self.inner.into_inner()
     }
