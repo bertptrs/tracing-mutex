@@ -137,6 +137,12 @@ impl MutexId {
     }
 }
 
+impl Default for MutexId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl fmt::Debug for MutexId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MutexID({:?})", self.0)

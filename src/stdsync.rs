@@ -53,7 +53,7 @@ pub type DebugRwLock<T> = RwLock<T>;
 ///
 /// Refer to the [crate-level][`crate`] documentaiton for the differences between this struct and
 /// the one it wraps.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TracingMutex<T> {
     inner: Mutex<T>,
     id: MutexId,
@@ -136,12 +136,6 @@ impl<T> TracingMutex<T> {
 
     pub fn into_inner(self) -> LockResult<T> {
         self.inner.into_inner()
-    }
-}
-
-impl<T: ?Sized + Default> Default for TracingMutex<T> {
-    fn default() -> Self {
-        Self::new(T::default())
     }
 }
 
@@ -241,12 +235,9 @@ impl<T> TracingRwLock<T> {
     }
 }
 
-impl<T> Default for TracingRwLock<T>
-where
-    T: Default,
-{
-    fn default() -> Self {
-        Self::new(T::default())
+impl<T> From<T> for TracingRwLock<T> {
+    fn from(t: T) -> Self {
+        Self::new(t)
     }
 }
 
