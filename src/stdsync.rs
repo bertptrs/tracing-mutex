@@ -184,7 +184,7 @@ impl<'a, T: fmt::Display> fmt::Display for TracingMutexGuard<'a, T> {
 }
 
 /// Wrapper for [`std::sync::RwLock`].
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TracingRwLock<T> {
     inner: RwLock<T>,
     id: MutexId,
