@@ -125,7 +125,7 @@ impl MutexId {
     pub fn get_borrowed(&self) -> BorrowedMutex {
         let creates_cycle = HELD_LOCKS.with(|locks| {
             if let Some(&previous) = locks.borrow().last() {
-                let mut graph = get_depedency_graph();
+                let mut graph = get_dependency_graph();
 
                 graph.add_edge(previous, self.value()) && graph.has_cycles()
             } else {
@@ -157,7 +157,7 @@ impl fmt::Debug for MutexId {
 
 impl Drop for MutexId {
     fn drop(&mut self) {
-        get_depedency_graph().remove_node(self.value());
+        get_dependency_graph().remove_node(self.value());
     }
 }
 
@@ -263,7 +263,7 @@ impl<'a> Drop for BorrowedMutex<'a> {
 }
 
 /// Get a reference to the current dependency graph
-fn get_depedency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
+fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
     DEPENDENCY_GRAPH
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
@@ -295,7 +295,7 @@ mod tests {
         let b = LazyMutexId::new();
         let c = LazyMutexId::new();
 
-        let mut graph = get_depedency_graph();
+        let mut graph = get_dependency_graph();
         graph.add_edge(a.value(), b.value());
         graph.add_edge(b.value(), c.value());
 
@@ -309,6 +309,6 @@ mod tests {
         drop(c);
 
         // If c's destructor correctly ran the graph shouldn't contain cycles anymore
-        assert!(!get_depedency_graph().has_cycles());
+        assert!(!get_dependency_graph().has_cycles());
     }
 }
