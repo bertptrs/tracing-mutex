@@ -48,8 +48,11 @@
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::fmt;
+use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::ptr;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
@@ -163,16 +166,20 @@ impl Drop for MutexId {
 /// This struct can be used similarly to the normal mutex ID, but to be const-compatible its ID is
 /// generated on first use. This allows it to be used as the mutex ID for mutexes with a `const`
 /// constructor.
+///
+/// This type can be largely replaced once std::lazy gets stabilized.
 struct LazyMutexId {
-    inner: UnsafeCell<Option<MutexId>>,
+    inner: UnsafeCell<MaybeUninit<MutexId>>,
     setter: Once,
+    _marker: PhantomData<MutexId>,
 }
 
 impl LazyMutexId {
     pub const fn new() -> Self {
         Self {
-            inner: UnsafeCell::new(None),
+            inner: UnsafeCell::new(MaybeUninit::uninit()),
             setter: Once::new(),
+            _marker: PhantomData,
         }
     }
 }
@@ -193,13 +200,35 @@ impl Deref for LazyMutexId {
             // Safety: this function is only called once, so only one mutable reference should exist
             // at a time.
             unsafe {
-                *self.inner.get() = Some(MutexId::new());
+                *self.inner.get() = MaybeUninit::new(MutexId::new());
             }
         });
 
         // Safety: after the above Once runs, there are no longer any mutable references, so we can
         // hand this out safely.
-        unsafe { (*self.inner.get()).as_ref().unwrap() }
+        //
+        // Explanation of this monstrosity:
+        //
+        // - Get a pointer to the data from the UnsafeCell
+        // - Dereference that to get a reference to the underlying MaybeUninit
+        // - Use as_ptr on MaybeUninit to get a pointer to the initialized MutexID
+        // - Dereference the pointer to turn in into a reference as intended.
+        //
+        // This should get slightly nicer once `maybe_uninit_extra` is stabilized.
+        unsafe { &*((*self.inner.get()).as_ptr()) }
+    }
+}
+
+impl Drop for LazyMutexId {
+    fn drop(&mut self) {
+        if self.setter.is_completed() {
+            // We have a valid mutex ID and need to drop it
+
+            // Safety: we know that this pointer is valid because the initializer has successfully run.
+            let mutex_id = unsafe { ptr::read((*self.inner.get()).as_ptr()) };
+
+            drop(mutex_id);
+        }
     }
 }
 
@@ -255,5 +284,30 @@ mod tests {
 
         // Can't assert N + 1 because multiple threads running tests
         assert!(initial.0 < next.0);
+    }
+
+    #[test]
+    fn test_lazy_mutex_id() {
+        let _graph_lock = GRAPH_MUTEX.lock();
+
+        let a = LazyMutexId::new();
+        let b = LazyMutexId::new();
+        let c = LazyMutexId::new();
+
+        let mut graph = get_depedency_graph();
+        graph.add_edge(a.value(), b.value());
+        graph.add_edge(b.value(), c.value());
+
+        assert!(!graph.has_cycles());
+
+        graph.add_edge(c.value(), a.value());
+        assert!(graph.has_cycles());
+
+        // Drop graph handle so we can drop vertices without deadlocking
+        drop(graph);
+        drop(c);
+
+        // If c's destructor correctly ran the graph shouldn't contain cycles anymore
+        assert!(!get_depedency_graph().has_cycles());
     }
 }
