@@ -19,6 +19,8 @@ use std::ops::DerefMut;
 use std::sync::LockResult;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::sync::Once;
+use std::sync::OnceState;
 use std::sync::PoisonError;
 use std::sync::RwLock;
 use std::sync::RwLockReadGuard;
@@ -27,6 +29,7 @@ use std::sync::TryLockError;
 use std::sync::TryLockResult;
 
 use crate::BorrowedMutex;
+use crate::LazyMutexId;
 use crate::MutexId;
 
 /// Debug-only tracing `Mutex`.
@@ -41,13 +44,23 @@ pub type DebugMutex<T> = Mutex<T>;
 
 /// Debug-only tracing `RwLock`.
 ///
-/// Type alias that resolves to [`RwLock`] when debug assertions are enabled and to
+/// Type alias that resolves to [`TracingRwLock`] when debug assertions are enabled and to
 /// [`std::sync::RwLock`] when they're not. Use this if you want to have the benefits of cycle
 /// detection in development but do not want to pay the performance penalty in release.
 #[cfg(debug_assertions)]
 pub type DebugRwLock<T> = TracingRwLock<T>;
 #[cfg(not(debug_assertions))]
 pub type DebugRwLock<T> = RwLock<T>;
+
+/// Debug-only tracing `Once`.
+///
+/// Type alias that resolves to [`TracingOnce`] when debug assertions are enabled and to
+/// [`std::sync::Once`] when they're not. Use this if you want to have the benefits of cycle
+/// detection in development but do not want to pay the performance penalty in release.
+#[cfg(debug_assertions)]
+pub type DebugOnce = TracingOnce;
+#[cfg(not(debug_assertions))]
+pub type DebugOnce = Once;
 
 /// Wrapper for [`std::sync::Mutex`].
 ///
@@ -307,6 +320,60 @@ where
     }
 }
 
+/// Wrapper around [`std::sync::Once`].
+///
+/// Refer to the [crate-level][`crate`] documentaiton for the differences between this struct and
+/// the one it wraps.
+#[derive(Debug)]
+pub struct TracingOnce {
+    inner: Once,
+    mutex_id: LazyMutexId,
+}
+
+impl TracingOnce {
+    /// Create a new `Once` value.
+    pub const fn new() -> Self {
+        Self {
+            inner: Once::new(),
+            mutex_id: LazyMutexId::new(),
+        }
+    }
+
+    /// Wrapper for [`std::sync::Once::call_once`].
+    ///
+    /// # Panics
+    ///
+    /// In addition to the panics that `Once` can cause, this method will panic if calling it
+    /// introduces a cycle in the lock dependency graph.
+    pub fn call_once<F>(&self, f: F)
+    where
+        F: FnOnce(),
+    {
+        let _guard = self.mutex_id.get_borrowed();
+        self.inner.call_once(f);
+    }
+
+    /// Performs the same operation as [`call_once`][TracingOnce::call_once] except it ignores
+    /// poisoning.
+    ///
+    /// # Panics
+    ///
+    /// This method participates in lock dependency tracking. If acquiring this lock introduces a
+    /// dependency cycle, this method will panic.
+    pub fn call_once_force<F>(&self, f: F)
+    where
+        F: FnOnce(&OnceState),
+    {
+        let _guard = self.mutex_id.get_borrowed();
+        self.inner.call_once_force(f);
+    }
+
+    /// Returns true if some `call_once` has completed successfully.
+    pub fn is_completed(&self) -> bool {
+        self.inner.is_completed()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -354,6 +421,28 @@ mod tests {
         });
 
         handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_once_usage() {
+        let _graph_lock = GRAPH_MUTEX.lock();
+
+        let once = Arc::new(TracingOnce::new());
+        let once_clone = once.clone();
+
+        assert!(!once.is_completed());
+
+        let handle = thread::spawn(move || {
+            assert!(!once_clone.is_completed());
+
+            once_clone.call_once(|| {});
+
+            assert!(once_clone.is_completed());
+        });
+
+        handle.join().unwrap();
+
+        assert!(once.is_completed());
     }
 
     #[test]

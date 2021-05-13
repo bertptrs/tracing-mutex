@@ -46,11 +46,14 @@
 //!
 //! [paper]: https://whileydave.com/publications/pk07_jea/
 use std::cell::RefCell;
+use std::cell::UnsafeCell;
 use std::fmt;
+use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
+use std::sync::Once;
 use std::sync::PoisonError;
 
 use lazy_static::lazy_static;
@@ -152,6 +155,51 @@ impl fmt::Debug for MutexId {
 impl Drop for MutexId {
     fn drop(&mut self) {
         get_depedency_graph().remove_node(self.value());
+    }
+}
+
+/// `const`-compatible version of [`crate::MutexId`].
+///
+/// This struct can be used similarly to the normal mutex ID, but to be const-compatible its ID is
+/// generated on first use. This allows it to be used as the mutex ID for mutexes with a `const`
+/// constructor.
+struct LazyMutexId {
+    inner: UnsafeCell<Option<MutexId>>,
+    setter: Once,
+}
+
+impl LazyMutexId {
+    pub const fn new() -> Self {
+        Self {
+            inner: UnsafeCell::new(None),
+            setter: Once::new(),
+        }
+    }
+}
+
+impl fmt::Debug for LazyMutexId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.deref())
+    }
+}
+
+unsafe impl Sync for LazyMutexId {}
+
+impl Deref for LazyMutexId {
+    type Target = MutexId;
+
+    fn deref(&self) -> &Self::Target {
+        self.setter.call_once(|| {
+            // Safety: this function is only called once, so only one mutable reference should exist
+            // at a time.
+            unsafe {
+                *self.inner.get() = Some(MutexId::new());
+            }
+        });
+
+        // Safety: after the above Once runs, there are no longer any mutable references, so we can
+        // hand this out safely.
+        unsafe { (*self.inner.get()).as_ref().unwrap() }
     }
 }
 
