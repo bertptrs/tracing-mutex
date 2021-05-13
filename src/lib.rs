@@ -190,6 +190,7 @@ impl fmt::Debug for LazyMutexId {
     }
 }
 
+/// Safety: the UnsafeCell is guaranteed to only be accessed mutably from a `Once`.
 unsafe impl Sync for LazyMutexId {}
 
 impl Deref for LazyMutexId {
