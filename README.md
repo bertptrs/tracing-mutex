@@ -54,5 +54,6 @@ available for other synchronization primitives.
 ## Future improvements
 
 - Improve performance in lock tracing
+- Optional logging to make debugging easier
 - Better and configurable error handling when detecting cyclic dependencies
 - Support for other locking libraries, such as `parking_lot`

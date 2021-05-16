@@ -14,8 +14,8 @@ type Order = usize;
 /// original paper.
 ///
 /// This digraph tracks its own topological order and updates it when new edges are added to the
-/// graph. After a cycle has been introduced, the order is no longer kept up to date as it doesn't
-/// exist, but new edges are still tracked. Nodes are added implicitly when they're used in edges.
+/// graph. If a cycle is added that would create a cycle, that edge is rejected and the graph is not
+/// visibly changed.
 ///
 /// [paper]: https://whileydave.com/publications/pk07_jea/
 #[derive(Clone, Default, Debug)]
@@ -27,9 +27,6 @@ where
     out_edges: HashMap<V, HashSet<V>>,
     /// Next topological sort order
     next_ord: Order,
-    /// Poison flag, set if a cycle is detected when adding a new edge and
-    /// unset when removing a node successfully removed the cycle.
-    contains_cycle: bool,
     /// Topological sort order. Order is not guaranteed to be contiguous
     ord: HashMap<V, Order>,
 }
@@ -71,45 +68,49 @@ where
                     self.out_edges.get_mut(&other).unwrap().remove(&n);
                 }
 
-                if self.contains_cycle {
-                    // Need to build a valid topological order
-                    self.recompute_topological_order();
-                }
-
                 true
             }
         }
     }
 
-    /// Add an edge to the graph
+    /// Attempt to add an edge to the graph
     ///
-    /// Nodes, both from and to, are created as needed when creating new edges.
+    /// Nodes, both from and to, are created as needed when creating new edges. If the new edge
+    /// would introduce a cycle, the edge is rejected and `false` is returned.
     pub(crate) fn add_edge(&mut self, x: V, y: V) -> bool {
         if x == y {
             // self-edges are not considered cycles
-            return false;
+            return true;
         }
 
         let (_, out_edges, ub) = self.add_node(x);
 
         if !out_edges.insert(y) {
             // Edge already exists, nothing to be done
-            return false;
+            return true;
         }
 
         let (in_edges, _, lb) = self.add_node(y);
 
         in_edges.insert(x);
 
-        if !self.contains_cycle && lb < ub {
+        if lb < ub {
             // This edge might introduce a cycle, need to recompute the topological sort
             let mut visited = HashSet::new();
             let mut delta_f = Vec::new();
             let mut delta_b = Vec::new();
 
             if !self.dfs_f(y, ub, &mut visited, &mut delta_f) {
-                self.contains_cycle = true;
-                return true;
+                // This edge introduces a cycle, so we want to reject it and remove it from the
+                // graph again to keep the "does not contain cycles" invariant.
+
+                // We use map instead of unwrap to avoid an `unwrap()` but we know that these
+                // entries are present as we just added them above.
+                self.in_edges.get_mut(&y).map(|nodes| nodes.remove(&x));
+                self.out_edges.get_mut(&x).map(|nodes| nodes.remove(&y));
+
+                // No edge was added
+                return false;
             }
 
             // No need to check as we should've found the cycle on the forward pass
@@ -187,78 +188,6 @@ where
         // Can use unstable sort because mutex ids should not be equal
         ids.sort_unstable_by_key(|v| self.ord[v]);
     }
-
-    pub fn has_cycles(&self) -> bool {
-        self.contains_cycle
-    }
-
-    /// Attempt to recompute a valid topological order.
-    ///
-    /// This method implements the DFS method to find leave nodes to find the reverse order
-    fn recompute_topological_order(&mut self) {
-        // This function should only be called when the graph contains a cycle.
-        debug_assert!(self.contains_cycle);
-
-        let mut permanent_marks = HashSet::with_capacity(self.out_edges.len());
-        let mut temporary_marks = HashSet::new();
-        let mut rev_order = Vec::with_capacity(self.out_edges.len());
-
-        for node in self.out_edges.keys() {
-            if permanent_marks.contains(node) {
-                continue;
-            }
-
-            if !self.visit(
-                *node,
-                &mut permanent_marks,
-                &mut temporary_marks,
-                &mut rev_order,
-            ) {
-                // Cycle found, no order possible
-                return;
-            }
-        }
-
-        // We didn't find a cycle, so we can reset
-        self.contains_cycle = false;
-        // Newly allocated order is contiguous 0..rev_order.len()
-        self.next_ord = rev_order.len();
-
-        self.ord.clear();
-        self.ord
-            .extend(rev_order.into_iter().rev().enumerate().map(|(k, v)| (v, k)))
-    }
-
-    /// Helper function for `Self::recompute_topological_order`.
-    fn visit(
-        &self,
-        v: V,
-        permanent_marks: &mut HashSet<V>,
-        temporary_marks: &mut HashSet<V>,
-        rev_order: &mut Vec<V>,
-    ) -> bool {
-        if permanent_marks.contains(&v) {
-            return true;
-        }
-
-        if !temporary_marks.insert(v) {
-            return false;
-        }
-
-        if !self.out_edges[&v]
-            .iter()
-            .all(|&w| self.visit(w, permanent_marks, temporary_marks, rev_order))
-        {
-            return false;
-        }
-
-        temporary_marks.remove(&v);
-        permanent_marks.insert(v);
-
-        rev_order.push(v);
-
-        true
-    }
 }
 
 #[cfg(test)]
@@ -270,20 +199,15 @@ mod tests {
         let mut graph = DiGraph::default();
 
         // Add some safe edges
-        graph.add_edge(0, 1);
-        graph.add_edge(1, 2);
-        graph.add_edge(2, 3);
-        graph.add_edge(4, 2);
+        assert!(graph.add_edge(0, 1));
+        assert!(graph.add_edge(1, 2));
+        assert!(graph.add_edge(2, 3));
+        assert!(graph.add_edge(4, 2));
 
-        // Should not have a cycle yet
-        assert!(!graph.has_cycles());
+        // Try to add an edge that introduces a cycle
+        assert!(!graph.add_edge(3, 1));
 
-        // Introduce cycle 3 → 1 → 2 → 3
-        graph.add_edge(3, 1);
-        assert!(graph.has_cycles());
-
-        // Removing 3 should remove that cycle
-        assert!(graph.remove_node(3));
-        assert!(!graph.has_cycles())
+        // Add an edge that should reorder 0 to be after 4
+        assert!(graph.add_edge(4, 0));
     }
 }

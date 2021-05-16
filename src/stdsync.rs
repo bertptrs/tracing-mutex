@@ -380,12 +380,9 @@ mod tests {
     use std::thread;
 
     use super::*;
-    use crate::tests::GRAPH_MUTEX;
 
     #[test]
     fn test_mutex_usage() {
-        let _graph_lock = GRAPH_MUTEX.lock();
-
         let mutex = Arc::new(TracingMutex::new(()));
         let mutex_clone = mutex.clone();
 
@@ -403,8 +400,6 @@ mod tests {
 
     #[test]
     fn test_rwlock_usage() {
-        let _graph_lock = GRAPH_MUTEX.lock();
-
         let rwlock = Arc::new(TracingRwLock::new(()));
         let rwlock_clone = rwlock.clone();
 
@@ -425,8 +420,6 @@ mod tests {
 
     #[test]
     fn test_once_usage() {
-        let _graph_lock = GRAPH_MUTEX.lock();
-
         let once = Arc::new(TracingOnce::new());
         let once_clone = once.clone();
 
@@ -448,8 +441,6 @@ mod tests {
     #[test]
     #[should_panic(expected = "Mutex order graph should not have cycles")]
     fn test_detect_cycle() {
-        let _graph_lock = GRAPH_MUTEX.lock();
-
         let a = TracingMutex::new(());
         let b = TracingMutex::new(());
 

@@ -10,9 +10,10 @@
 //!
 //! The primary method by which this crate signals an invalid lock acquisition order is by
 //! panicking. When a cycle is created in the dependency graph when acquiring a lock, the thread
-//! will instead panic. This panic will not poison the underlying mutex. Each following acquired
-//! that introduces a **new** dependency will also panic, until enough mutexes are deallocated to
-//! break the cycle in the graph.
+//! will instead panic. This panic will not poison the underlying mutex.
+//!
+//! This conflicting dependency is not added to the graph, so future attempts at locking should
+//! succeed as normal.
 //!
 //! # Structure
 //!
@@ -35,9 +36,8 @@
 //!
 //! - **Allocating a lock** performs an atomic update to a shared counter.
 //!
-//! - **Deallocating a mutex** temporarily locks the global dependency graph to remove the lock from
-//!   it. If the graph contained a cycle, a complete scan of the (now pruned) graph is done to
-//!   determine if this is still the case.
+//! - **Deallocating a mutex** temporarily locks the global dependency graph to remove the lock
+//!   entry in the dependency graph.
 //!
 //! These operations have been reasonably optimized, but the performance penalty may yet be too much
 //! for production use. In those cases, it may be beneficial to instead use debug-only versions
@@ -127,7 +127,7 @@ impl MutexId {
             if let Some(&previous) = locks.borrow().last() {
                 let mut graph = get_dependency_graph();
 
-                graph.add_edge(previous, self.value()) && graph.has_cycles()
+                !graph.add_edge(previous, self.value())
             } else {
                 false
             }
@@ -273,11 +273,6 @@ fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
 mod tests {
     use super::*;
 
-    lazy_static! {
-        /// Mutex to isolate tests manipulating the global mutex graph
-        pub(crate) static ref GRAPH_MUTEX: Mutex<()> = Mutex::new(());
-    }
-
     #[test]
     fn test_next_mutex_id() {
         let initial = MutexId::new();
@@ -289,26 +284,23 @@ mod tests {
 
     #[test]
     fn test_lazy_mutex_id() {
-        let _graph_lock = GRAPH_MUTEX.lock();
-
         let a = LazyMutexId::new();
         let b = LazyMutexId::new();
         let c = LazyMutexId::new();
 
         let mut graph = get_dependency_graph();
-        graph.add_edge(a.value(), b.value());
-        graph.add_edge(b.value(), c.value());
+        assert!(graph.add_edge(a.value(), b.value()));
+        assert!(graph.add_edge(b.value(), c.value()));
 
-        assert!(!graph.has_cycles());
-
-        graph.add_edge(c.value(), a.value());
-        assert!(graph.has_cycles());
+        // Creating an edge c → a should fail as it introduces a cycle.
+        assert!(!graph.add_edge(c.value(), a.value()));
 
         // Drop graph handle so we can drop vertices without deadlocking
         drop(graph);
-        drop(c);
 
-        // If c's destructor correctly ran the graph shouldn't contain cycles anymore
-        assert!(!get_dependency_graph().has_cycles());
+        drop(b);
+
+        // If b's destructor correctly ran correctly we can now add an edge from c to a.
+        assert!(get_dependency_graph().add_edge(c.value(), a.value()));
     }
 }
