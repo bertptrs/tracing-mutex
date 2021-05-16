@@ -1,5 +1,9 @@
 # Tracing Mutex
 
+[![Continuous integration](https://github.com/bertptrs/tracing-mutex/actions/workflows/ci.yml/badge.svg)](https://github.com/bertptrs/tracing-mutex/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/tracing-mutex.svg)](https://crates.io/crates/tracing-mutex)
+[![Documentation](https://img.shields.io/docsrs/tracing-mutex.svg)](https://docs.rs/tracing-mutex)
+
 Avoid deadlocks in your mutexes by acquiring them in a consistent order, or else.
 
 ## Background
@@ -57,3 +61,22 @@ available for other synchronization primitives.
 - Optional logging to make debugging easier
 - Better and configurable error handling when detecting cyclic dependencies
 - Support for other locking libraries, such as `parking_lot`
+
+**Note:** `parking_lot` has already began work on its own deadlock detection mechanism, which works
+in a different way. Both can be complimentary.
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](./LICENSE-APACHE) or
+  http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](./LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contributing
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the
+work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
+additional terms or conditions.
