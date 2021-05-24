@@ -13,6 +13,11 @@ repository = "https://github.com/bertptrs/tracing-mutex"
 
 [dependencies]
 lazy_static = "1"
+lock_api = { version = "0.4", optional = true }
 
 [dev-dependencies]
 rand = "0.8"
+
+[features]
+# Feature names do not match crate names pending namespaced features.
+lockapi = ["lock_api"]
