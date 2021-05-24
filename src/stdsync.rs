@@ -42,6 +42,12 @@ pub type DebugMutex<T> = TracingMutex<T>;
 #[cfg(not(debug_assertions))]
 pub type DebugMutex<T> = Mutex<T>;
 
+/// Mutex guard for [`DebugMutex`].
+#[cfg(debug_assertions)]
+pub type DebugMutexGuard<'a, T> = TracingMutexGuard<'a, T>;
+#[cfg(not(debug_assertions))]
+pub type DebugMutexGuard<'a, T> = MutexGuard<'a, T>;
+
 /// Debug-only tracing `RwLock`.
 ///
 /// Type alias that resolves to [`TracingRwLock`] when debug assertions are enabled and to
@@ -51,6 +57,18 @@ pub type DebugMutex<T> = Mutex<T>;
 pub type DebugRwLock<T> = TracingRwLock<T>;
 #[cfg(not(debug_assertions))]
 pub type DebugRwLock<T> = RwLock<T>;
+
+/// Read guard for [`DebugRwLock`].
+#[cfg(debug_assertions)]
+pub type DebugReadGuard<'a, T> = TracingReadGuard<'a, T>;
+#[cfg(not(debug_assertions))]
+pub type DebugReadGuard<'a, T> = RwLockReadGuard<'a, T>;
+
+/// Write guard for [`DebugRwLock`].
+#[cfg(debug_assertions)]
+pub type DebugWriteGuard<'a, T> = TracingWriteGuard<'a, T>;
+#[cfg(not(debug_assertions))]
+pub type DebugWriteGuard<'a, T> = RwLockWriteGuard<'a, T>;
 
 /// Debug-only tracing `Once`.
 ///

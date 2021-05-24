@@ -6,13 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Added missing type aliases for the guards returned by `DebugMutex` and `DebugRwLock`. These new
+  type aliases function the same as the ones they belong to, resolving to either the tracing
+  versions when debug assertions are enabled or the standard one when they're not.
+
 ## [0.1.1] - 2021-05-24
 
 ### Changed
 - New data structure for interal dependency graph, resulting in quicker graph updates.
 
 ### Fixed
-- Fixed an issue where internal graph ordering indices were exponential rather than sequential.
+- Fixed an issue where internal graph ordering indices were exponential rather than sequential. This
+  caused the available IDs to run out way more quickly than intended.
 
 ## [0.1.0] - 2021-05-16 [YANKED]
 
