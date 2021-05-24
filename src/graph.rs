@@ -192,6 +192,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use rand::prelude::SliceRandom;
+    use rand::thread_rng;
+
     use super::*;
 
     #[test]
@@ -209,5 +212,33 @@ mod tests {
 
         // Add an edge that should reorder 0 to be after 4
         assert!(graph.add_edge(4, 0));
+    }
+
+    /// Fuzz the DiGraph implementation by adding a bunch of valid edges.
+    ///
+    /// This test generates all possible forward edges in a 100-node graph consisting of natural
+    /// numbers, shuffles them, then adds them to the graph. This will always be a valid directed,
+    /// acyclic graph because there is a trivial order (the natural numbers) but because the edges
+    /// are added in a random order the DiGraph will still occassionally need to reorder nodes.
+    #[test]
+    fn fuzz_digraph() {
+        // Note: this fuzzer is quadratic in the number of nodes, so this cannot be too large or it
+        // will slow down the tests too much.
+        const NUM_NODES: usize = 100;
+        let mut edges = Vec::with_capacity(NUM_NODES * NUM_NODES);
+
+        for i in 0..NUM_NODES {
+            for j in i..NUM_NODES {
+                edges.push((i, j));
+            }
+        }
+
+        edges.shuffle(&mut thread_rng());
+
+        let mut graph = DiGraph::default();
+
+        for (x, y) in edges {
+            assert!(graph.add_edge(x, y));
+        }
     }
 }
