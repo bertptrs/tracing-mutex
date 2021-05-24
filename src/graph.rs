@@ -49,7 +49,7 @@ where
 
         let order = *self.ord.entry(n).or_insert_with(|| {
             let order = *next_ord;
-            *next_ord += next_ord.checked_add(1).expect("Topological order overflow");
+            *next_ord = next_ord.checked_add(1).expect("Topological order overflow");
             order
         });
 
