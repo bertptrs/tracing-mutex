@@ -222,7 +222,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use rand::prelude::SliceRandom;
+    use rand::seq::SliceRandom;
     use rand::thread_rng;
 
     use super::*;
