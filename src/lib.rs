@@ -89,9 +89,6 @@ lazy_static! {
 ///
 /// This type is currently private to prevent usage while the exact implementation is figured out,
 /// but it will likely be public in the future.
-///
-/// One possible alteration is to make this type not `Copy` but `Drop`, and handle deregistering
-/// the lock from there.
 struct MutexId(usize);
 
 impl MutexId {
@@ -271,6 +268,9 @@ fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
 
 #[cfg(test)]
 mod tests {
+    use rand::seq::SliceRandom;
+    use rand::thread_rng;
+
     use super::*;
 
     #[test]
@@ -302,5 +302,33 @@ mod tests {
 
         // If b's destructor correctly ran correctly we can now add an edge from c to a.
         assert!(get_dependency_graph().add_edge(c.value(), a.value()));
+    }
+
+    /// Fuzz the global dependency graph by fake-acquiring lots of mutexes in a valid order.
+    ///
+    /// This test generates all possible forward edges in a 100-node graph consisting of natural
+    /// numbers, shuffles them, then adds them to the graph. This will always be a valid directed,
+    /// acyclic graph because there is a trivial order (the natural numbers) but because the edges
+    /// are added in a random order the DiGraph will still occassionally need to reorder nodes.
+    #[test]
+    fn fuzz_mutex_id() {
+        const NUM_NODES: usize = 100;
+
+        let ids: Vec<MutexId> = (0..NUM_NODES).map(|_| Default::default()).collect();
+
+        let mut edges = Vec::with_capacity(NUM_NODES * NUM_NODES);
+        for i in 0..NUM_NODES {
+            for j in i..NUM_NODES {
+                edges.push((i, j));
+            }
+        }
+
+        edges.shuffle(&mut thread_rng());
+
+        for (x, y) in edges {
+            // Acquire the mutexes, smallest first to ensure a cycle-free graph
+            let _ignored = ids[x].get_borrowed();
+            let _ = ids[y].get_borrowed();
+        }
     }
 }
