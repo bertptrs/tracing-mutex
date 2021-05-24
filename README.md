@@ -2,7 +2,7 @@
 
 [![Continuous integration](https://github.com/bertptrs/tracing-mutex/actions/workflows/ci.yml/badge.svg)](https://github.com/bertptrs/tracing-mutex/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/tracing-mutex.svg)](https://crates.io/crates/tracing-mutex)
-[![Documentation](https://img.shields.io/docsrs/tracing-mutex.svg)](https://docs.rs/tracing-mutex)
+[![Documentation](https://docs.rs/tracing-mutex/badge.svg)](https://docs.rs/tracing-mutex)
 
 Avoid deadlocks in your mutexes by acquiring them in a consistent order, or else.
 
@@ -17,6 +17,10 @@ One simple way to get around this is by ensuring that, when you need both `Foo` 
 should first acquire `Foo` then you can never deadlock. Of course, with just two mutexes, this is
 easy to keep track of, but once your code starts to grow you might lose track of all these
 dependencies. That's where this crate comes in.
+
+This crate tracks the order in which you acquire locks in your code, tries to build a dependency
+tree out of it, and panics if your dependencies would create a cycle. It provides replacements for
+existing synchronization primitives with an identical API, and should be a drop-in replacement.
 
 Inspired by [this blogpost][whileydave], which references a similar behaviour implemented by
 [Abseil][abseil-mutex] for their mutexes.
