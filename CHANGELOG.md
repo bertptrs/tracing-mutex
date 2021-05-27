@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2021-05-27
+
 ### Added
 - Added missing type aliases for the guards returned by `DebugMutex` and `DebugRwLock`. These new
   type aliases function the same as the ones they belong to, resolving to either the tracing
@@ -27,6 +29,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Initial release.
 
-[Unreleased]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.2...v0.1.2
 [0.1.1]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/bertptrs/tracing-mutex/releases/tag/v0.1.0
