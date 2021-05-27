@@ -11,6 +11,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   type aliases function the same as the ones they belong to, resolving to either the tracing
   versions when debug assertions are enabled or the standard one when they're not.
 
+### Fixed
+- Fixed a corruption error where deallocating a previously cyclic mutex could result in a panic.
+
 ## [0.1.1] - 2021-05-24
 
 ### Changed

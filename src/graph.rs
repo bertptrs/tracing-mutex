@@ -127,7 +127,7 @@ where
                 // We use map instead of unwrap to avoid an `unwrap()` but we know that these
                 // entries are present as we just added them above.
                 self.nodes.get_mut(&y).map(|node| node.in_edges.remove(&x));
-                self.nodes.get_mut(&x).map(|node| node.out_edges.remove(&x));
+                self.nodes.get_mut(&x).map(|node| node.out_edges.remove(&y));
 
                 // No edge was added
                 return false;

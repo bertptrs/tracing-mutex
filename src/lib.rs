@@ -304,6 +304,18 @@ mod tests {
         assert!(get_dependency_graph().add_edge(c.value(), a.value()));
     }
 
+    /// Test creating a cycle, then panicking.
+    #[test]
+    #[should_panic]
+    fn test_mutex_id_conflict() {
+        let ids = [MutexId::new(), MutexId::new(), MutexId::new()];
+
+        for i in 0..3 {
+            let _first_lock = ids[i].get_borrowed();
+            let _second_lock = ids[(i + 1) % 3].get_borrowed();
+        }
+    }
+
     /// Fuzz the global dependency graph by fake-acquiring lots of mutexes in a valid order.
     ///
     /// This test generates all possible forward edges in a 100-node graph consisting of natural
