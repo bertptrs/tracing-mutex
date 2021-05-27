@@ -1,25 +1,67 @@
 use crate::lockapi::TracingWrapper;
 
-macro_rules! create_mutex_wrapper {
-    ($wrapped:ty, $tracing_name:ident, $debug_name:ident) => {
-        pub type $tracing_name<T> = lock_api::Mutex<TracingWrapper<$wrapped>, T>;
+macro_rules! debug_variant {
+    ($debug_name:ident, $tracing_name:ident, $normal_name:ty) => {
+        type $tracing_name = TracingWrapper<$normal_name>;
 
         #[cfg(debug_assertions)]
-        pub type $debug_name<T> = $tracing_name<T>;
+        type $debug_name = TracingWrapper<$normal_name>;
         #[cfg(not(debug_assertions))]
-        pub type $debug_name<T> = lock_api::Mutex<$wrapped, T>;
+        type $debug_name = $normal_name;
     };
 }
 
-create_mutex_wrapper!(parking_lot::RawFairMutex, TracingFairMutex, DebugFairMutex);
-create_mutex_wrapper!(parking_lot::RawMutex, TracingMutex, DebugMutex);
+debug_variant!(
+    DebugRawFairMutex,
+    TracingRawFairMutex,
+    parking_lot::RawFairMutex
+);
+debug_variant!(DebugRawMutex, TracingRawMutex, parking_lot::RawMutex);
 
+/// Dependency tracking fair mutex. See: [`parking_lot::FairMutex`].
+pub type TracingFairMutex<T> = lock_api::Mutex<TracingRawFairMutex, T>;
+/// Mutex guard for [`TracingFairMutex`].
+pub type TracingFairMutexGuard<'a, T> = lock_api::MutexGuard<'a, TracingRawFairMutex, T>;
+/// Debug-only dependency tracking fair mutex.
+///
+/// If debug assertions are enabled this resolves to [`TracingFairMutex`] and to
+/// [`parking_lot::FairMutex`] if it's not.
+pub type DebugFairMutex<T> = lock_api::Mutex<DebugRawFairMutex, T>;
+/// Mutex guard for [`DebugFairMutex`].
+pub type DebugFairMutexGuard<'a, T> = lock_api::MutexGuard<'a, DebugRawFairMutex, T>;
+
+/// Dependency tracking mutex. See: [`parking_lot::Mutex`].
+pub type TracingMutex<T> = lock_api::Mutex<TracingRawMutex, T>;
+/// Mutex guard for [`TracingMutex`].
+pub type TracingMutexGuard<'a, T> = lock_api::MutexGuard<'a, TracingRawMutex, T>;
+/// Debug-only dependency tracking mutex.
+///
+/// If debug assertions are enabled this resolves to [`TracingMutex`] and to [`parking_lot::Mutex`]
+/// if it's not.
+pub type DebugMutex<T> = lock_api::Mutex<DebugRawMutex, T>;
+/// Mutex guard for [`DebugMutex`].
+pub type DebugMutexGuard<'a, T> = lock_api::MutexGuard<'a, DebugRawMutex, T>;
+
+/// Dependency tracking reentrant mutex. See: [`parking_lot::ReentrantMutex`].
 pub type TracingReentrantMutex<T> =
     lock_api::ReentrantMutex<TracingWrapper<parking_lot::RawMutex>, parking_lot::RawThreadId, T>;
-#[cfg(debug_assertions)]
-pub type DebugReentrantMutex<T> = TracingReentrantMutex<T>;
-#[cfg(not(debug_assertions))]
-pub type DebugReentrantMutex<T> = parking_lot::ReentrantMutex<T>;
+/// Mutex guard for [`TracingReentrantMutex`].
+pub type TracingReentrantMutexGuard<'a, T> = lock_api::ReentrantMutexGuard<
+    'a,
+    TracingWrapper<parking_lot::RawMutex>,
+    parking_lot::RawThreadId,
+    T,
+>;
+
+/// Debug-only dependency tracking reentrant mutex.
+///
+/// If debug assertions are enabled this resolves to [`TracingReentrantMutex`] and to
+/// [`parking_lot::ReentrantMutex`] if it's not.
+pub type DebugReentrantMutex<T> =
+    lock_api::ReentrantMutex<DebugRawMutex, parking_lot::RawThreadId, T>;
+/// Mutex guard for [`DebugReentrantMutex`].
+pub type DebugReentrantMutexGuard<'a, T> =
+    lock_api::ReentrantMutexGuard<'a, DebugRawMutex, parking_lot::RawThreadId, T>;
 
 #[cfg(test)]
 mod tests {
