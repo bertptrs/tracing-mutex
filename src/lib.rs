@@ -62,12 +62,16 @@ use std::sync::PoisonError;
 use lazy_static::lazy_static;
 #[cfg(feature = "lockapi")]
 pub use lock_api;
+#[cfg(feature = "parkinglot")]
+pub use parking_lot;
 
 use crate::graph::DiGraph;
 
 mod graph;
 #[cfg(feature = "lockapi")]
 pub mod lockapi;
+#[cfg(feature = "lockapi")]
+pub mod parkinglot;
 pub mod stdsync;
 
 /// Counter for Mutex IDs. Atomic avoids the need for locking.
