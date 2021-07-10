@@ -1,4 +1,13 @@
 //! Wrapper implementations for [`lock_api`].
+//!
+//! This module does not provide any particular mutex implementation by itself, but rather can be
+//! used to add dependency tracking to mutexes that already exist. It implements all of the traits
+//! in `lock_api` based on the one it wraps. Crates such as `spin` and `parking_lot` provide base
+//! primitives that can be wrapped.
+//!
+//! Wrapped mutexes are at least one `usize` larger than the types they wrapped, and must be aligned
+//! to `usize` boundaries. As such, libraries with many mutexes may want to consider the additional
+//! required memory.
 use lock_api::GuardNoSend;
 use lock_api::RawMutex;
 use lock_api::RawMutexFair;

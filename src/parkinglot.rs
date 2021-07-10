@@ -1,3 +1,42 @@
+//! Wrapper types and type aliases for tracing [`parking_lot`] mutexes.
+//!
+//! This module provides type aliases that use the [`lockapi`][crate::lockapi] module to provide
+//! tracing variants of the `parking_lot` primitives. Each of the `TracingX` type aliases wraps an
+//! `X` in the `parkint_lot` api with dependency tracking, and a `DebugX` will refer to a `TracingX`
+//! when  `debug_assertions` are enabled and to `X` when they're not. This can be used to aid
+//! debugging in development while enjoying maximum performance in production.
+//!
+//! # Usage
+//!
+//! ```
+//! # use std::sync::Arc;
+//! # use std::thread;
+//! # use lock_api::Mutex;
+//! # use tracing_mutex::parkinglot::TracingMutex;
+//! let mutex = Arc::new(TracingMutex::new(0));
+//!
+//! let handles: Vec<_> = (0..10).map(|_| {
+//!    let mutex = Arc::clone(&mutex);
+//!    thread::spawn(move || *mutex.lock() += 1)
+//! }).collect();
+//!
+//! handles.into_iter().for_each(|handle| handle.join().unwrap());
+//!
+//! // All threads completed so the value should be 10.
+//! assert_eq!(10, *mutex.lock());
+//! ```
+//!
+//! # Limitations
+//!
+//! The main lock for the global state is still provided by `std::sync` and the tracing primitives
+//! are larger than the `parking_lot` primitives they wrap, so there can be a performance
+//! degradation between using this and using `parking_lot` directly. If this is of concern to you,
+//! try using the `DebugX`-structs, which provide cycle detection only when `debug_assertions` are
+//! enabled and have no overhead when they're not.
+//!
+//! In addition, the mutex guards returned by the tracing wrappers are `!Send`, regardless of
+//! whether `parking_lot` is configured to have `Send` mutex guards. This is a limitation of the
+//! current bookkeeping system.
 use parking_lot::Once;
 use parking_lot::OnceState;
 
