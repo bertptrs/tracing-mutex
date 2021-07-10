@@ -7,12 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
-- Added generic support for wrapping mutexes that implement the traits provided by the
+- Generic support for wrapping mutexes that implement the traits provided by the
   [`lock_api`][lock_api] crate. This can be used for creating support for other mutex providers that
   implement it.
 
-- Added support for [`parking_lot`][parking_lot] mutexes. Support includes type aliases for all
+- Support for [`parking_lot`][parking_lot] mutexes. Support includes type aliases for all
   provided mutex types as well as a dedicated `Once` wrapper.
+
+- Simple benchmark to track the rough performance penalty incurred by dependency tracking.
 
 ## [0.1.2] - 2021-05-27
 
