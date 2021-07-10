@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Added generic support for wrapping mutexes that implement the traits provided by the
+  [`lock_api`][lock_api] crate. This can be used for creating support for other mutex providers that
+  implement it.
+
+- Added support for [`parking_lot`][parking_lot] mutexes. Support includes type aliases for all
+  provided mutex types as well as a dedicated `Once` wrapper.
+
 ## [0.1.2] - 2021-05-27
 
 ### Added
@@ -33,3 +41,6 @@ Initial release.
 [0.1.2]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.2...v0.1.2
 [0.1.1]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/bertptrs/tracing-mutex/releases/tag/v0.1.0
+
+[lock_api]: https://docs.rs/lock_api/
+[parking_lot]: https://docs.rs/parking_lot/

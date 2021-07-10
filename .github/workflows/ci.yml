@@ -30,10 +30,12 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
+          args: --all-features
 
       - uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --all-features
 
       - uses: actions-rs/cargo@v1
         with:
@@ -43,4 +45,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --all-features -- -D warnings
