@@ -27,6 +27,9 @@ debug_variant!(DebugRawRwLock, TracingRawRwLock, parking_lot::RawRwLock);
 pub type TracingFairMutex<T> = lock_api::Mutex<TracingRawFairMutex, T>;
 /// Mutex guard for [`TracingFairMutex`].
 pub type TracingFairMutexGuard<'a, T> = lock_api::MutexGuard<'a, TracingRawFairMutex, T>;
+/// RAII guard for `TracingFairMutexGuard::map`.
+pub type TracingMappedFairMutexGuard<'a, T> =
+    lock_api::MappedMutexGuard<'a, TracingRawFairMutex, T>;
 /// Debug-only dependency tracking fair mutex.
 ///
 /// If debug assertions are enabled this resolves to [`TracingFairMutex`] and to
@@ -34,11 +37,15 @@ pub type TracingFairMutexGuard<'a, T> = lock_api::MutexGuard<'a, TracingRawFairM
 pub type DebugFairMutex<T> = lock_api::Mutex<DebugRawFairMutex, T>;
 /// Mutex guard for [`DebugFairMutex`].
 pub type DebugFairMutexGuard<'a, T> = lock_api::MutexGuard<'a, DebugRawFairMutex, T>;
+/// RAII guard for `DebugFairMutexGuard::map`.
+pub type DebugMappedFairMutexGuard<'a, T> = lock_api::MappedMutexGuard<'a, DebugRawFairMutex, T>;
 
 /// Dependency tracking mutex. See: [`parking_lot::Mutex`].
 pub type TracingMutex<T> = lock_api::Mutex<TracingRawMutex, T>;
 /// Mutex guard for [`TracingMutex`].
 pub type TracingMutexGuard<'a, T> = lock_api::MutexGuard<'a, TracingRawMutex, T>;
+/// RAII guard for `TracingMutexGuard::map`.
+pub type TracingMappedMutexGuard<'a, T> = lock_api::MappedMutexGuard<'a, TracingRawMutex, T>;
 /// Debug-only dependency tracking mutex.
 ///
 /// If debug assertions are enabled this resolves to [`TracingMutex`] and to [`parking_lot::Mutex`]
@@ -46,6 +53,8 @@ pub type TracingMutexGuard<'a, T> = lock_api::MutexGuard<'a, TracingRawMutex, T>
 pub type DebugMutex<T> = lock_api::Mutex<DebugRawMutex, T>;
 /// Mutex guard for [`DebugMutex`].
 pub type DebugMutexGuard<'a, T> = lock_api::MutexGuard<'a, DebugRawMutex, T>;
+/// RAII guard for `TracingMutexGuard::map`.
+pub type DebugMappedMutexGuard<'a, T> = lock_api::MappedMutexGuard<'a, DebugRawMutex, T>;
 
 /// Dependency tracking reentrant mutex. See: [`parking_lot::ReentrantMutex`].
 ///
@@ -61,6 +70,9 @@ pub type TracingReentrantMutexGuard<'a, T> = lock_api::ReentrantMutexGuard<
     parking_lot::RawThreadId,
     T,
 >;
+/// RAII guard for `TracingReentrantMutexGuard::map`.
+pub type TracingMappedReentrantMutexGuard<'a, T> =
+    lock_api::MappedReentrantMutexGuard<'a, TracingRawMutex, parking_lot::RawThreadId, T>;
 
 /// Debug-only dependency tracking reentrant mutex.
 ///
@@ -71,6 +83,9 @@ pub type DebugReentrantMutex<T> =
 /// Mutex guard for [`DebugReentrantMutex`].
 pub type DebugReentrantMutexGuard<'a, T> =
     lock_api::ReentrantMutexGuard<'a, DebugRawMutex, parking_lot::RawThreadId, T>;
+/// RAII guard for `DebugReentrantMutexGuard::map`.
+pub type DebugMappedReentrantMutexGuard<'a, T> =
+    lock_api::MappedReentrantMutexGuard<'a, DebugRawMutex, parking_lot::RawThreadId, T>;
 
 /// Dependency tracking RwLock. See: [`parking_lot::RwLock`].
 pub type TracingRwLock<T> = lock_api::RwLock<TracingRawRwLock, T>;
@@ -78,6 +93,12 @@ pub type TracingRwLock<T> = lock_api::RwLock<TracingRawRwLock, T>;
 pub type TracingRwLockReadGuard<'a, T> = lock_api::RwLockReadGuard<'a, TracingRawRwLock, T>;
 /// Write guard for [`TracingRwLock`].
 pub type TracingRwLockWriteGuard<'a, T> = lock_api::RwLockWriteGuard<'a, TracingRawRwLock, T>;
+/// RAII guard for `TracingRwLockReadGuard::map`.
+pub type TracingMappedRwLockReadGuard<'a, T> =
+    lock_api::MappedRwLockReadGuard<'a, TracingRawRwLock, T>;
+/// RAII guard for `TracingRwLockWriteGuard::map`.
+pub type TracingMappedRwLockWriteGuard<'a, T> =
+    lock_api::MappedRwLockWriteGuard<'a, TracingRawRwLock, T>;
 
 /// Debug-only dependency tracking RwLock.
 ///
@@ -88,6 +109,11 @@ pub type DebugRwLock<T> = lock_api::RwLock<DebugRawRwLock, T>;
 pub type DebugRwLockReadGuard<'a, T> = lock_api::RwLockReadGuard<'a, DebugRawRwLock, T>;
 /// Write guard for [`TracingRwLock`].
 pub type DebugRwLockWriteGuard<'a, T> = lock_api::RwLockWriteGuard<'a, DebugRawRwLock, T>;
+/// RAII guard for `DebugRwLockReadGuard::map`.
+pub type DebugMappedRwLockReadGuard<'a, T> = lock_api::MappedRwLockReadGuard<'a, DebugRawRwLock, T>;
+/// RAII guard for `DebugRwLockWriteGuard::map`.
+pub type DebugMappedRwLockWriteGuard<'a, T> =
+    lock_api::MappedRwLockWriteGuard<'a, DebugRawRwLock, T>;
 
 /// A dependency-tracking wrapper for [`parking_lot::Once`].
 #[derive(Debug, Default)]
