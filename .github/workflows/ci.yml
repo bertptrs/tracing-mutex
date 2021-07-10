@@ -30,7 +30,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --all-features
+          # --all-targets ensures that we also build the benchmarks and tests already.
+          args: --all-features --all-targets
 
       - uses: actions-rs/cargo@v1
         with:
