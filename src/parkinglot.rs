@@ -21,6 +21,7 @@ debug_variant!(
     parking_lot::RawFairMutex
 );
 debug_variant!(DebugRawMutex, TracingRawMutex, parking_lot::RawMutex);
+debug_variant!(DebugRawRwLock, TracingRawRwLock, parking_lot::RawRwLock);
 
 /// Dependency tracking fair mutex. See: [`parking_lot::FairMutex`].
 pub type TracingFairMutex<T> = lock_api::Mutex<TracingRawFairMutex, T>;
@@ -47,6 +48,10 @@ pub type DebugMutex<T> = lock_api::Mutex<DebugRawMutex, T>;
 pub type DebugMutexGuard<'a, T> = lock_api::MutexGuard<'a, DebugRawMutex, T>;
 
 /// Dependency tracking reentrant mutex. See: [`parking_lot::ReentrantMutex`].
+///
+/// **Note:** due to the way dependencies are tracked, this mutex can only be acquired directly
+/// after itself. Acquiring any other mutex in between introduces a dependency cycle, and will
+/// therefore be rejected.
 pub type TracingReentrantMutex<T> =
     lock_api::ReentrantMutex<TracingWrapper<parking_lot::RawMutex>, parking_lot::RawThreadId, T>;
 /// Mutex guard for [`TracingReentrantMutex`].
@@ -66,6 +71,23 @@ pub type DebugReentrantMutex<T> =
 /// Mutex guard for [`DebugReentrantMutex`].
 pub type DebugReentrantMutexGuard<'a, T> =
     lock_api::ReentrantMutexGuard<'a, DebugRawMutex, parking_lot::RawThreadId, T>;
+
+/// Dependency tracking RwLock. See: [`parking_lot::RwLock`].
+pub type TracingRwLock<T> = lock_api::RwLock<TracingRawRwLock, T>;
+/// Read guard for [`TracingRwLock`].
+pub type TracingRwLockReadGuard<'a, T> = lock_api::RwLockReadGuard<'a, TracingRawRwLock, T>;
+/// Write guard for [`TracingRwLock`].
+pub type TracingRwLockWriteGuard<'a, T> = lock_api::RwLockWriteGuard<'a, TracingRawRwLock, T>;
+
+/// Debug-only dependency tracking RwLock.
+///
+/// If debug assertions are enabled this resolved to [`TracingRwLock`] and to
+/// [`parking_lot::RwLock`] otherwise.
+pub type DebugRwLock<T> = lock_api::RwLock<DebugRawRwLock, T>;
+/// Read guard for [`TracingRwLock`].
+pub type DebugRwLockReadGuard<'a, T> = lock_api::RwLockReadGuard<'a, DebugRawRwLock, T>;
+/// Write guard for [`TracingRwLock`].
+pub type DebugRwLockWriteGuard<'a, T> = lock_api::RwLockWriteGuard<'a, DebugRawRwLock, T>;
 
 /// A dependency-tracking wrapper for [`parking_lot::Once`].
 #[derive(Debug, Default)]
@@ -152,6 +174,21 @@ mod tests {
             let _first_lock = mutexes[i].lock();
             let _second_lock = mutexes[(i + 1) % 3].lock();
         }
+    }
+
+    #[test]
+    fn test_rwlock_usage() {
+        let lock = Arc::new(TracingRwLock::new(()));
+        let lock2 = Arc::clone(&lock);
+
+        let _read_lock = lock.read();
+
+        // Should be able to acquire lock in the background
+        thread::spawn(move || {
+            let _read_lock = lock2.read();
+        })
+        .join()
+        .unwrap();
     }
 
     #[test]
