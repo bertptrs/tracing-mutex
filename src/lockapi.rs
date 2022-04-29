@@ -185,7 +185,7 @@ where
     }
 
     unsafe fn unlock_exclusive(&self) {
-        self.lock(|| self.inner.unlock_exclusive());
+        self.unlock(|| self.inner.unlock_exclusive());
     }
 
     fn is_locked(&self) -> bool {
@@ -318,7 +318,7 @@ where
     T: RawRwLockUpgradeFair,
 {
     unsafe fn unlock_upgradable_fair(&self) {
-        self.lock(|| self.inner.unlock_upgradable_fair())
+        self.unlock(|| self.inner.unlock_upgradable_fair())
     }
 
     unsafe fn bump_upgradable(&self) {
@@ -339,10 +339,10 @@ where
     }
 
     unsafe fn try_upgrade_for(&self, timeout: Self::Duration) -> bool {
-        self.conditionally_lock(|| self.inner.try_upgrade_for(timeout))
+        self.inner.try_upgrade_for(timeout)
     }
 
     unsafe fn try_upgrade_until(&self, timeout: Self::Instant) -> bool {
-        self.conditionally_lock(|| self.inner.try_upgrade_until(timeout))
+        self.inner.try_upgrade_until(timeout)
     }
 }
