@@ -98,8 +98,8 @@ where
     /// would introduce a cycle, the edge is rejected and `false` is returned.
     pub(crate) fn add_edge(&mut self, x: V, y: V) -> bool {
         if x == y {
-            // self-edges are not considered cycles
-            return true;
+            // self-edges are always considered cycles
+            return false;
         }
 
         let (_, out_edges, ub) = self.add_node(x);
@@ -258,7 +258,9 @@ mod tests {
 
         for i in 0..NUM_NODES {
             for j in i..NUM_NODES {
-                edges.push((i, j));
+                if i != j {
+                    edges.push((i, j));
+                }
             }
         }
 
