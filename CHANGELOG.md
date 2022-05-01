@@ -16,6 +16,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Simple benchmark to track the rough performance penalty incurred by dependency tracking.
 
+### Changed
+
+- The project now targets edition 2021
+
 ## [0.1.2] - 2021-05-27
 
 ### Added

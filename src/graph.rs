@@ -115,7 +115,7 @@ where
 
         if lb < ub {
             // This edge might introduce a cycle, need to recompute the topological sort
-            let mut visited = IntoIterator::into_iter([x, y]).collect();
+            let mut visited = [x, y].into_iter().collect();
             let mut delta_f = Vec::new();
             let mut delta_b = Vec::new();
 
