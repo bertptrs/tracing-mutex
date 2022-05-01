@@ -2,7 +2,7 @@
 name = "tracing-mutex"
 version = "0.1.2"
 authors = ["Bert Peters <bert@bertptrs.nl>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/tracing-mutex"
 categories = ["concurrency", "development-tools::debugging"]

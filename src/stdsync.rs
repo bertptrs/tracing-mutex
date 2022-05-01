@@ -97,7 +97,7 @@ pub struct TracingMutex<T> {
 #[derive(Debug)]
 pub struct TracingMutexGuard<'a, T> {
     inner: MutexGuard<'a, T>,
-    mutex: BorrowedMutex<'a>,
+    _mutex: BorrowedMutex<'a>,
 }
 
 fn map_lockresult<T, I, F>(result: LockResult<I>, mapper: F) -> LockResult<T>
@@ -144,7 +144,7 @@ impl<T> TracingMutex<T> {
         let result = self.inner.lock();
 
         let mapper = |guard| TracingMutexGuard {
-            mutex,
+            _mutex: mutex,
             inner: guard,
         };
 
@@ -163,7 +163,7 @@ impl<T> TracingMutex<T> {
         let result = self.inner.try_lock();
 
         let mapper = |guard| TracingMutexGuard {
-            mutex,
+            _mutex: mutex,
             inner: guard,
         };
 
@@ -227,7 +227,7 @@ pub struct TracingRwLock<T> {
 #[derive(Debug)]
 pub struct TracingRwLockGuard<'a, L> {
     inner: L,
-    mutex: BorrowedMutex<'a>,
+    _mutex: BorrowedMutex<'a>,
 }
 
 /// Wrapper around [`std::sync::RwLockReadGuard`].
@@ -254,7 +254,10 @@ impl<T> TracingRwLock<T> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.read();
 
-        map_lockresult(result, |inner| TracingRwLockGuard { inner, mutex })
+        map_lockresult(result, |inner| TracingRwLockGuard {
+            inner,
+            _mutex: mutex,
+        })
     }
 
     /// Wrapper for [`std::sync::RwLock::write`].
@@ -268,7 +271,10 @@ impl<T> TracingRwLock<T> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.write();
 
-        map_lockresult(result, |inner| TracingRwLockGuard { inner, mutex })
+        map_lockresult(result, |inner| TracingRwLockGuard {
+            inner,
+            _mutex: mutex,
+        })
     }
 
     /// Wrapper for [`std::sync::RwLock::try_read`].
@@ -282,7 +288,10 @@ impl<T> TracingRwLock<T> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.try_read();
 
-        map_trylockresult(result, |inner| TracingRwLockGuard { inner, mutex })
+        map_trylockresult(result, |inner| TracingRwLockGuard {
+            inner,
+            _mutex: mutex,
+        })
     }
 
     /// Wrapper for [`std::sync::RwLock::try_write`].
@@ -296,7 +305,10 @@ impl<T> TracingRwLock<T> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.try_write();
 
-        map_trylockresult(result, |inner| TracingRwLockGuard { inner, mutex })
+        map_trylockresult(result, |inner| TracingRwLockGuard {
+            inner,
+            _mutex: mutex,
+        })
     }
 
     /// Return a mutable reference to the underlying data.
