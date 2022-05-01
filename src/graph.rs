@@ -1,4 +1,3 @@
-use std::array::IntoIter;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -116,7 +115,7 @@ where
 
         if lb < ub {
             // This edge might introduce a cycle, need to recompute the topological sort
-            let mut visited = IntoIter::new([x, y]).collect();
+            let mut visited = IntoIterator::into_iter([x, y]).collect();
             let mut delta_f = Vec::new();
             let mut delta_b = Vec::new();
 
