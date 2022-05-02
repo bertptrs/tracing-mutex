@@ -195,7 +195,7 @@ impl<T> From<T> for TracingMutex<T> {
 }
 
 impl<'a, T> Deref for TracingMutexGuard<'a, T> {
-    type Target = MutexGuard<'a, T>;
+    type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -413,7 +413,12 @@ mod tests {
 
     #[test]
     fn test_mutex_usage() {
-        let mutex = Arc::new(TracingMutex::new(()));
+        let mutex = Arc::new(TracingMutex::new((0)));
+
+        assert_eq!(*mutex.lock().unwrap(), 0);
+        *mutex.lock().unwrap() = 1;
+        assert_eq!(*mutex.lock().unwrap(), 1);
+
         let mutex_clone = mutex.clone();
 
         let _guard = mutex.lock().unwrap();
@@ -430,7 +435,14 @@ mod tests {
 
     #[test]
     fn test_rwlock_usage() {
-        let rwlock = Arc::new(TracingRwLock::new(()));
+        let rwlock = Arc::new(TracingRwLock::new((0)));
+
+        assert_eq!(*rwlock.read().unwrap(), 0);
+        assert_eq!(*rwlock.write().unwrap(), 0);
+        *rwlock.write().unwrap() = 1;
+        assert_eq!(*rwlock.read().unwrap(), 1);
+        assert_eq!(*rwlock.write().unwrap(), 1);
+
         let rwlock_clone = rwlock.clone();
 
         let _read_lock = rwlock.read().unwrap();
