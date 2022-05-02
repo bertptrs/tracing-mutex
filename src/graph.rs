@@ -227,6 +227,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_no_self_cycle() {
+        // Regression test for https://github.com/bertptrs/tracing-mutex/issues/7
+        let mut graph = DiGraph::default();
+
+        assert!(!graph.add_edge(1, 1));
+    }
+
+    #[test]
     fn test_digraph() {
         let mut graph = DiGraph::default();
 
