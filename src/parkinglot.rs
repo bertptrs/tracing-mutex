@@ -130,6 +130,9 @@ pub type DebugMappedReentrantMutexGuard<'a, T> =
 pub type TracingRwLock<T> = lock_api::RwLock<TracingRawRwLock, T>;
 /// Read guard for [`TracingRwLock`].
 pub type TracingRwLockReadGuard<'a, T> = lock_api::RwLockReadGuard<'a, TracingRawRwLock, T>;
+/// Upgradable Read guard for [`TracingRwLock`].
+pub type TracingRwLockUpgradableReadGuard<'a, T> =
+    lock_api::RwLockUpgradableReadGuard<'a, TracingRawRwLock, T>;
 /// Write guard for [`TracingRwLock`].
 pub type TracingRwLockWriteGuard<'a, T> = lock_api::RwLockWriteGuard<'a, TracingRawRwLock, T>;
 /// RAII guard for `TracingRwLockReadGuard::map`.
@@ -146,6 +149,9 @@ pub type TracingMappedRwLockWriteGuard<'a, T> =
 pub type DebugRwLock<T> = lock_api::RwLock<DebugRawRwLock, T>;
 /// Read guard for [`TracingRwLock`].
 pub type DebugRwLockReadGuard<'a, T> = lock_api::RwLockReadGuard<'a, DebugRawRwLock, T>;
+/// Upgradable Read guard for [`TracingRwLock`].
+pub type DebugRwLockUpgradableReadGuard<'a, T> =
+    lock_api::RwLockUpgradableReadGuard<'a, DebugRawRwLock, T>;
 /// Write guard for [`TracingRwLock`].
 pub type DebugRwLockWriteGuard<'a, T> = lock_api::RwLockWriteGuard<'a, DebugRawRwLock, T>;
 /// RAII guard for `DebugRwLockReadGuard::map`.
@@ -254,6 +260,18 @@ mod tests {
         })
         .join()
         .unwrap();
+    }
+
+    #[test]
+    fn test_rwlock_upgradable_read_usage() {
+        let lock = Arc::new(TracingRwLock::new(()));
+
+        // Should be able to acquire an upgradable read lock.
+        let upgradable_guard: TracingRwLockUpgradableReadGuard<'_, _> = lock.upgradable_read();
+
+        // Should be able to upgrade the guard.
+        let _write_guard: TracingRwLockWriteGuard<'_, _> =
+            TracingRwLockUpgradableReadGuard::upgrade(upgradable_guard);
     }
 
     #[test]
