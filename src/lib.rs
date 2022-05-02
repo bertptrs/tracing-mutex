@@ -357,7 +357,9 @@ mod tests {
         let mut edges = Vec::with_capacity(NUM_NODES * NUM_NODES);
         for i in 0..NUM_NODES {
             for j in i..NUM_NODES {
-                edges.push((i, j));
+                if i != j {
+                    edges.push((i, j));
+                }
             }
         }
 
