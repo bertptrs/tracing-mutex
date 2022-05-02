@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_rwlock_upgradable_read_usage() {
-        let lock = Arc::new(TracingRwLock::new(()));
+        let lock = TracingRwLock::new(());
 
         // Should be able to acquire an upgradable read lock.
         let upgradable_guard: TracingRwLockUpgradableReadGuard<'_, _> = lock.upgradable_read();
