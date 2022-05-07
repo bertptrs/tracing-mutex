@@ -15,7 +15,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The `parkinglot` module is now correctly enabled by the `parkinglot` feature rather than the
   `lockapi` feature.
 
-## [0.2.0]
+## [0.2.0] - 2022-05-07
 
 ### Added
 - Generic support for wrapping mutexes that implement the traits provided by the
