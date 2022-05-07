@@ -413,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_mutex_usage() {
-        let mutex = Arc::new(TracingMutex::new((0)));
+        let mutex = Arc::new(TracingMutex::new(0));
 
         assert_eq!(*mutex.lock().unwrap(), 0);
         *mutex.lock().unwrap() = 1;
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_rwlock_usage() {
-        let rwlock = Arc::new(TracingRwLock::new((0)));
+        let rwlock = Arc::new(TracingRwLock::new(0));
 
         assert_eq!(*rwlock.read().unwrap(), 0);
         assert_eq!(*rwlock.write().unwrap(), 0);
