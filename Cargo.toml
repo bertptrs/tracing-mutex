@@ -11,6 +11,12 @@ description = "Ensure deadlock-free mutexes by allocating in order, or else."
 readme = "README.md"
 repository = "https://github.com/bertptrs/tracing-mutex"
 
+[package.metadata.docs.rs]
+# Build docs for all features so the documentation is more complete
+all-features = true
+# Set custom cfg so we can enable docs.rs magic
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 lazy_static = "1"
 lock_api = { version = "0.4", optional = true }
