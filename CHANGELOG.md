@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Build [docs.rs] documentation with all features enabled for completeness.
+
 ## [0.2.0]
 
 ### Added
@@ -61,5 +65,6 @@ Initial release.
 [0.1.1]: https://github.com/bertptrs/tracing-mutex/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/bertptrs/tracing-mutex/releases/tag/v0.1.0
 
+[docs.rs]: https://docs.rs/tracing-mutex/latest/tracing_mutex/
 [lock_api]: https://docs.rs/lock_api/
 [parking_lot]: https://docs.rs/parking_lot/
