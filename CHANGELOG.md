@@ -6,9 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
 - Build [docs.rs] documentation with all features enabled for completeness.
+
+### Fixed
+
+- The `parkinglot` module is now correctly enabled by the `parkinglot` feature rather than the
+  `lockapi` feature.
 
 ## [0.2.0]
 

@@ -14,6 +14,8 @@ repository = "https://github.com/bertptrs/tracing-mutex"
 [package.metadata.docs.rs]
 # Build docs for all features so the documentation is more complete
 all-features = true
+# Set custom cfg so we can enable docs.rs magic
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 lazy_static = "1"
