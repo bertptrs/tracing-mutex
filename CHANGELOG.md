@@ -9,6 +9,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Build [docs.rs] documentation with all features enabled for completeness.
+- Add support for `std::sync::Condvar`
 
 ### Fixed
 
