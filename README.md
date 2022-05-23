@@ -59,12 +59,23 @@ performance penalty in your production environment, this library also offers deb
 when debug assertions are enabled, and to `Mutex` when they are not. Similar helper types are
 available for other synchronization primitives.
 
+### Features
+
+- Dependency-tracking wrappers for all locking primitives
+- Optional opt-out for release mode code
+- Support for primitives from:
+  - `std::sync`
+  - `parking_lot`
+  - Any library that implements the `lock_api` traits
+
 ## Future improvements
 
 - Improve performance in lock tracing
 - Optional logging to make debugging easier
 - Better and configurable error handling when detecting cyclic dependencies
-- Support for other locking libraries, such as `parking_lot`
+- Support for other locking libraries
+- Support for async locking libraries
+- Support for `Send` mutex guards
 
 **Note:** `parking_lot` has already began work on its own deadlock detection mechanism, which works
 in a different way. Both can be complimentary.
