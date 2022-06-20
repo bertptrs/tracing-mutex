@@ -21,6 +21,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 lazy_static = "1"
 lock_api = { version = "0.4", optional = true }
 parking_lot = { version = "0.11", optional = true }
+tokio = {version = "1.19.2", optional = true, features = ["full"]}
 
 [dev-dependencies]
 criterion = "0.3"
@@ -34,3 +35,4 @@ harness = false
 # Feature names do not match crate names pending namespaced features.
 lockapi = ["lock_api"]
 parkinglot = ["parking_lot", "lockapi"]
+tokio_sync = ["tokio", "lock_api"]

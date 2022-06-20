@@ -78,6 +78,9 @@ pub mod lockapi;
 #[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
 pub mod parkinglot;
 pub mod stdsync;
+#[cfg(feature = "tokio_sync")]
+#[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
+pub mod tokio;
 
 /// Counter for Mutex IDs. Atomic avoids the need for locking.
 ///
