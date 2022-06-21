@@ -46,6 +46,8 @@
 //!
 //! [paper]: https://whileydave.com/publications/pk07_jea/
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![feature(backtrace)]
+use std::backtrace::Backtrace;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::fmt;
@@ -55,6 +57,7 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::Once;
@@ -93,7 +96,22 @@ thread_local! {
 }
 
 lazy_static! {
-    static ref DEPENDENCY_GRAPH: Mutex<DiGraph<usize>> = Default::default();
+    static ref DEPENDENCY_GRAPH: Mutex<DiGraph<usize, MutexEdge>> = Default::default();
+}
+
+#[derive(Clone)]
+struct MutexEdge(Arc<Backtrace>);
+
+impl MutexEdge {
+    fn capture() -> Self {
+        MutexEdge(Arc::new(Backtrace::capture()))
+    }
+}
+
+impl fmt::Debug for MutexEdge {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "{}", self.0)
+    }
 }
 
 /// Dedicated ID type for Mutexes
@@ -145,20 +163,19 @@ impl MutexId {
     /// # Panics
     ///
     /// This method panics if the new dependency would introduce a cycle.
+    #[track_caller]
     pub fn mark_held(&self) {
-        let creates_cycle = HELD_LOCKS.with(|locks| {
+        if let Err(cycle) = HELD_LOCKS.with(|locks| {
             if let Some(&previous) = locks.borrow().last() {
                 let mut graph = get_dependency_graph();
 
-                !graph.add_edge(previous, self.value())
+                graph.add_edge(previous, self.value(), MutexEdge::capture())
             } else {
-                false
+                Ok(())
             }
-        });
-
-        if creates_cycle {
+        }) {
             // Panic without holding the lock to avoid needlessly poisoning it
-            panic!("Mutex order graph should not have cycles");
+            panic!("Cycle found in mutex order graph: {:?}", cycle);
         }
 
         HELD_LOCKS.with(|locks| locks.borrow_mut().push(self.value()));
@@ -306,7 +323,7 @@ impl<'a> Drop for BorrowedMutex<'a> {
 }
 
 /// Get a reference to the current dependency graph
-fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
+fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize, MutexEdge>> {
     DEPENDENCY_GRAPH
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
@@ -335,11 +352,11 @@ mod tests {
         let c = LazyMutexId::new();
 
         let mut graph = get_dependency_graph();
-        assert!(graph.add_edge(a.value(), b.value()));
-        assert!(graph.add_edge(b.value(), c.value()));
+        assert!(graph.add_edge(a.value(), b.value(), MutexEdge::capture()).is_ok());
+        assert!(graph.add_edge(b.value(), c.value(), MutexEdge::capture()).is_ok());
 
         // Creating an edge c → a should fail as it introduces a cycle.
-        assert!(!graph.add_edge(c.value(), a.value()));
+        assert!(graph.add_edge(c.value(), a.value(), MutexEdge::capture()).is_err());
 
         // Drop graph handle so we can drop vertices without deadlocking
         drop(graph);
@@ -347,7 +364,7 @@ mod tests {
         drop(b);
 
         // If b's destructor correctly ran correctly we can now add an edge from c to a.
-        assert!(get_dependency_graph().add_edge(c.value(), a.value()));
+        assert!(get_dependency_graph().add_edge(c.value(), a.value(), MutexEdge::capture()).is_ok());
     }
 
     /// Test creating a cycle, then panicking.
