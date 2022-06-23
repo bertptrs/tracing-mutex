@@ -57,6 +57,7 @@ use std::ptr;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
+use std::sync::MutexGuard;
 use std::sync::Once;
 use std::sync::PoisonError;
 
@@ -134,7 +135,10 @@ impl MutexId {
     /// This method panics if the new dependency would introduce a cycle.
     pub fn get_borrowed(&self) -> BorrowedMutex {
         self.mark_held();
-        BorrowedMutex(self)
+        BorrowedMutex {
+            id: self,
+            _not_send: PhantomData,
+        }
     }
 
     /// Mark this lock as held for the purposes of dependency tracking.
@@ -274,8 +278,22 @@ impl Drop for LazyMutexId {
     }
 }
 
+/// Borrowed mutex ID
+///
+/// This type should be used as part of a mutex guard wrapper. It can be acquired through
+/// [`MutexId::get_borrowed`] and will automatically mark the mutex as not borrowed when it is
+/// dropped.
+///
+/// This type intentionally is [`!Send`](std::marker::Send) because the ownership tracking is based
+/// on a thread-local stack which doesn't work if a guard gets released in a different thread from
+/// where they're acquired.
 #[derive(Debug)]
-struct BorrowedMutex<'a>(&'a MutexId);
+struct BorrowedMutex<'a> {
+    /// Reference to the mutex we're borrowing from
+    id: &'a MutexId,
+    /// This value serves no purpose but to make the type [`!Send`](std::marker::Send)
+    _not_send: PhantomData<MutexGuard<'static, ()>>,
+}
 
 /// Drop a lock held by the current thread.
 ///
@@ -286,7 +304,7 @@ struct BorrowedMutex<'a>(&'a MutexId);
 impl<'a> Drop for BorrowedMutex<'a> {
     fn drop(&mut self) {
         // Safety: the only way to get a BorrowedMutex is by locking the mutex.
-        unsafe { self.0.mark_released() };
+        unsafe { self.id.mark_released() };
     }
 }
 

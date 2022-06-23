@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Enforce that all internal mutex guards are `!Send`. They already should be according to other
+  reasons, but this adds extra security through the type system.
+
 ## [0.2.1] - 2022-05-23
 
 ### Added
