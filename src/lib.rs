@@ -41,7 +41,7 @@
 //!
 //! These operations have been reasonably optimized, but the performance penalty may yet be too much
 //! for production use. In those cases, it may be beneficial to instead use debug-only versions
-//! (such as [`stdsync::DebugMutex`]) which evaluate to a tracing mutex when debug assertions are
+//! (such as [`stdsync::Mutex`]) which evaluate to a tracing mutex when debug assertions are
 //! enabled, and to the underlying mutex when they're not.
 //!
 //! [paper]: https://whileydave.com/publications/pk07_jea/
