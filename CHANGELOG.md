@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking
+
+- Update [`parking_lot`][parking_lot] dependency to `0.12`.
+
 ### Fixed
 
 - Enforce that all internal mutex guards are `!Send`. They already should be according to other
