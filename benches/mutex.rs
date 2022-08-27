@@ -7,7 +7,7 @@ use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
 use rand::prelude::*;
-use tracing_mutex::stdsync::TracingMutex;
+use tracing_mutex::stdsync::tracing::Mutex as TracingMutex;
 
 const SAMPLE_SIZES: [usize; 5] = [10, 30, 100, 300, 1000];
 

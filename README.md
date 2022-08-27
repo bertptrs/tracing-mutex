@@ -42,9 +42,9 @@ Replacements for the synchronization primitives in `std::sync` can be found in t
 Support for other synchronization primitives is planned.
 
 ```rust
-use tracing_mutex::stdsync::TracingMutex;
+use tracing_mutex::stdsync::Mutex;
 
-let some_mutex = TracingMutex::new(42);
+let some_mutex = Mutex::new(42);
 *some_mutex.lock().unwrap() += 1;
 println!("{:?}", some_mutex);
 ```

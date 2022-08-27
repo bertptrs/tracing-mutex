@@ -9,6 +9,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Breaking
 
 - Update [`parking_lot`][parking_lot] dependency to `0.12`.
+- Restructured the crate to reduce typename verbosity. For details, see: #25.
 
 ### Fixed
 
