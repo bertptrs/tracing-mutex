@@ -42,7 +42,6 @@ pub mod tracing {
 
     use crate::BorrowedMutex;
     use crate::LazyMutexId;
-    use crate::MutexId;
 
     /// Wrapper for [`std::sync::Mutex`].
     ///
@@ -51,7 +50,7 @@ pub mod tracing {
     #[derive(Debug, Default)]
     pub struct Mutex<T> {
         inner: sync::Mutex<T>,
-        id: MutexId,
+        id: LazyMutexId,
     }
 
     /// Wrapper for [`std::sync::MutexGuard`].
@@ -89,10 +88,10 @@ pub mod tracing {
 
     impl<T> Mutex<T> {
         /// Create a new tracing mutex with the provided value.
-        pub fn new(t: T) -> Self {
+        pub const fn new(t: T) -> Self {
             Self {
                 inner: sync::Mutex::new(t),
-                id: MutexId::new(),
+                id: LazyMutexId::new(),
             }
         }
 
@@ -220,8 +219,8 @@ pub mod tracing {
 
     impl Condvar {
         /// Creates a new condition variable which is ready to be waited on and notified.
-        pub fn new() -> Self {
-            Default::default()
+        pub const fn new() -> Self {
+            Self(sync::Condvar::new())
         }
 
         /// Wrapper for [`std::sync::Condvar::wait`].
@@ -294,7 +293,7 @@ pub mod tracing {
     #[derive(Debug, Default)]
     pub struct RwLock<T> {
         inner: sync::RwLock<T>,
-        id: MutexId,
+        id: LazyMutexId,
     }
 
     /// Hybrid wrapper for both [`std::sync::RwLockReadGuard`] and [`std::sync::RwLockWriteGuard`].
@@ -312,10 +311,10 @@ pub mod tracing {
     pub type RwLockWriteGuard<'a, T> = TracingRwLockGuard<'a, sync::RwLockWriteGuard<'a, T>>;
 
     impl<T> RwLock<T> {
-        pub fn new(t: T) -> Self {
+        pub const fn new(t: T) -> Self {
             Self {
                 inner: sync::RwLock::new(t),
-                id: MutexId::new(),
+                id: LazyMutexId::new(),
             }
         }
 
