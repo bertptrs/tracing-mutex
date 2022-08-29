@@ -53,7 +53,6 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::ptr;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
@@ -271,9 +270,7 @@ impl Drop for LazyMutexId {
             // We have a valid mutex ID and need to drop it
 
             // Safety: we know that this pointer is valid because the initializer has successfully run.
-            let mutex_id = unsafe { ptr::read((*self.inner.get()).as_ptr()) };
-
-            drop(mutex_id);
+            unsafe { (*self.inner.get()).assume_init_drop() };
         }
     }
 }
