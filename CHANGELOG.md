@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- The minimum supported Rust version is now defined as 1.63. Previously it was undefined.
+- Wrappers for `std::sync` primitives can now be `const` constructed.
+
 ### Breaking
 
 - Update [`parking_lot`][parking_lot] dependency to `0.12`.
