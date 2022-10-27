@@ -111,10 +111,10 @@ where
     ///
     /// Nodes, both from and to, are created as needed when creating new edges. If the new edge
     /// would introduce a cycle, the edge is rejected and the nodes in the cycle are returned.
-    pub(crate) fn add_edge<'a>(&'a mut self, x: V, y: V, e: E) -> Result<(), Vec<(V, E)>> {
+    pub(crate) fn add_edge<'a>(&'a mut self, x: V, y: V, e: impl FnOnce() -> E) -> Result<(), Vec<(V, V, E)>> {
         if x == y {
             // self-edges are always considered cycles
-            return Err(vec![(x, e)]);
+            return Err(vec![(x, y, e())]);
         }
 
         let (_, out_edges, ub) = self.add_node(x);
@@ -122,7 +122,7 @@ where
         match out_edges.entry(y) {
             // Edge already exists, nothing to be done
             Entry::Occupied(_) => return Ok(()),
-            Entry::Vacant(v) => v.insert(e),
+            Entry::Vacant(v) => v.insert(e()),
         };
 
         let (in_edges, _, lb) = self.add_node(y);
@@ -136,16 +136,18 @@ where
             let mut delta_b = Vec::new();
 
             let mut potential_cycle = vec![];
-            if !self.dfs_f(&self.nodes[&y], ub, &mut visited, &mut delta_f, &mut potential_cycle) {
+            if !self.dfs_f(y, ub, &mut visited, &mut delta_f, &mut potential_cycle) {
                 // This edge introduces a cycle, so we want to reject it and remove it from the
                 // graph again to keep the "does not contain cycles" invariant.
 
                 // We use map instead of unwrap to avoid an `unwrap()` but we know that these
                 // entries are present as we just added them above.
                 self.nodes.get_mut(&y).map(|node| node.in_edges.remove(&x));
-                self.nodes.get_mut(&x).map(|node| node.out_edges.remove(&y));
+                let e = self.nodes.get_mut(&x).and_then(|node| node.out_edges.remove(&y));
 
                 // No edge was added
+                potential_cycle.push((x, y, e.unwrap()));
+                potential_cycle.reverse();
                 return Err(potential_cycle);
             }
 
@@ -164,27 +166,27 @@ where
     /// Forwards depth-first-search
     fn dfs_f<'a>(
         &'a self,
-        n: &'a Node<V, E>,
+        v: V,
         ub: Order,
         visited: &mut HashSet<V>,
         delta_f: &mut Vec<&'a Node<V, E>>,
-        cycle: &mut Vec<(V, E)>,
+        cycle: &mut Vec<(V, V, E)>,
     ) -> bool {
+        let n = &self.nodes[&v];
         delta_f.push(n);
 
         for (w, e) in &n.out_edges {
-            let node = &self.nodes[w];
-            let ord = node.ord.get();
+            let ord = self.nodes[w].ord.get();
 
             if ord == ub {
                 // Found a cycle
-                cycle.push((*w, e.clone()));
+                cycle.push((v, *w, e.clone()));
                 return false;
             } else if !visited.contains(&w) && ord < ub {
                 // Need to check recursively
                 visited.insert(*w);
-                if !self.dfs_f(node, ub, visited, delta_f, cycle) {
-                    cycle.push((*w, e.clone()));
+                if !self.dfs_f(*w, ub, visited, delta_f, cycle) {
+                    cycle.push((v, *w, e.clone()));
                     return false;
                 }
             } else {

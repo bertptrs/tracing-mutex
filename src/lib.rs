@@ -46,7 +46,6 @@
 //!
 //! [paper]: https://whileydave.com/publications/pk07_jea/
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![feature(backtrace)]
 use std::backtrace::Backtrace;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
@@ -110,7 +109,7 @@ impl MutexEdge {
 
 impl fmt::Debug for MutexEdge {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{}", self.0)
+        write!(fmt, "{:p} {}", self.0, self.0)
     }
 }
 
@@ -169,7 +168,7 @@ impl MutexId {
             if let Some(&previous) = locks.borrow().last() {
                 let mut graph = get_dependency_graph();
 
-                graph.add_edge(previous, self.value(), MutexEdge::capture())
+                graph.add_edge(previous, self.value(), || MutexEdge::capture())
             } else {
                 Ok(())
             }
@@ -206,7 +205,7 @@ impl Default for MutexId {
 
 impl fmt::Debug for MutexId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MutexID({:?})", self.0)
+        write!(f, "MutexId({:?})", self.0)
     }
 }
 
