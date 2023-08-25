@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         rust:
-          - "1.63" # minimum stable rust version
+          - "1.70" # minimum stable rust version
           - stable
           - beta
           - nightly

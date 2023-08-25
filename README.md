@@ -61,7 +61,7 @@ performance penalty in your production environment, this library also offers deb
 when debug assertions are enabled, and to `Mutex` when they are not. Similar helper types are
 available for other synchronization primitives.
 
-The minimum supported Rust version is 1.63. Increasing this is not considered a breaking change, but
+The minimum supported Rust version is 1.70. Increasing this is not considered a breaking change, but
 will be avoided within semver-compatible releases if possible.
 
 ### Features
