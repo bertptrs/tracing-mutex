@@ -10,6 +10,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The minimum supported Rust version is now defined as 1.70. Previously it was undefined.
 - Wrappers for `std::sync` primitives can now be `const` constructed.
+- Add support for `std::sync::OnceLock`
 
 ### Breaking
 
