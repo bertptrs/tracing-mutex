@@ -107,10 +107,18 @@ where
     ///
     /// Nodes, both from and to, are created as needed when creating new edges. If the new edge
     /// would introduce a cycle, the edge is rejected and `false` is returned.
-    pub(crate) fn add_edge(&mut self, x: V, y: V, e: impl FnOnce() -> E) -> bool {
+    ///
+    /// # Errors
+    ///
+    /// If the edge would introduce the cycle, the underlying graph is not modified and a list of
+    /// all the edge data in the would-be cycle is returned instead.
+    pub(crate) fn add_edge(&mut self, x: V, y: V, e: impl FnOnce() -> E) -> Result<(), Vec<E>>
+    where
+        E: Clone,
+    {
         if x == y {
             // self-edges are always considered cycles
-            return false;
+            return Err(Vec::new());
         }
 
         let (_, out_edges, ub) = self.add_node(x);
@@ -118,7 +126,7 @@ where
         match out_edges.entry(y) {
             Entry::Occupied(_) => {
                 // Edge already exists, nothing to be done
-                return true;
+                return Ok(());
             }
             Entry::Vacant(entry) => entry.insert(e()),
         };
@@ -133,7 +141,7 @@ where
             let mut delta_f = Vec::new();
             let mut delta_b = Vec::new();
 
-            if !self.dfs_f(&self.nodes[&y], ub, &mut visited, &mut delta_f) {
+            if let Err(cycle) = self.dfs_f(&self.nodes[&y], ub, &mut visited, &mut delta_f) {
                 // This edge introduces a cycle, so we want to reject it and remove it from the
                 // graph again to keep the "does not contain cycles" invariant.
 
@@ -143,7 +151,7 @@ where
                 self.nodes.get_mut(&x).map(|node| node.out_edges.remove(&y));
 
                 // No edge was added
-                return false;
+                return Err(cycle);
             }
 
             // No need to check as we should've found the cycle on the forward pass
@@ -155,7 +163,7 @@ where
             self.reorder(delta_f, delta_b);
         }
 
-        true
+        Ok(())
     }
 
     /// Forwards depth-first-search
@@ -165,25 +173,30 @@ where
         ub: Order,
         visited: &mut HashSet<V>,
         delta_f: &mut Vec<&'a Node<V, E>>,
-    ) -> bool {
+    ) -> Result<(), Vec<E>>
+    where
+        E: Clone,
+    {
         delta_f.push(n);
 
-        n.out_edges.keys().all(|w| {
+        for (w, e) in &n.out_edges {
             let node = &self.nodes[w];
             let ord = node.ord.get();
 
             if ord == ub {
                 // Found a cycle
-                false
+                return Err(vec![e.clone()]);
             } else if !visited.contains(w) && ord < ub {
                 // Need to check recursively
                 visited.insert(*w);
-                self.dfs_f(node, ub, visited, delta_f)
-            } else {
-                // Already seen this one or not interesting
-                true
+                if let Err(mut chain) = self.dfs_f(node, ub, visited, delta_f) {
+                    chain.push(e.clone());
+                    return Err(chain);
+                }
             }
-        })
+        }
+
+        Ok(())
     }
 
     /// Backwards depth-first-search
@@ -260,7 +273,7 @@ mod tests {
         // Regression test for https://github.com/bertptrs/tracing-mutex/issues/7
         let mut graph = DiGraph::default();
 
-        assert!(!graph.add_edge(1, 1, nop));
+        assert!(graph.add_edge(1, 1, nop).is_err());
     }
 
     #[test]
@@ -268,16 +281,16 @@ mod tests {
         let mut graph = DiGraph::default();
 
         // Add some safe edges
-        assert!(graph.add_edge(0, 1, nop));
-        assert!(graph.add_edge(1, 2, nop));
-        assert!(graph.add_edge(2, 3, nop));
-        assert!(graph.add_edge(4, 2, nop));
+        assert!(graph.add_edge(0, 1, nop).is_ok());
+        assert!(graph.add_edge(1, 2, nop).is_ok());
+        assert!(graph.add_edge(2, 3, nop).is_ok());
+        assert!(graph.add_edge(4, 2, nop).is_ok());
 
         // Try to add an edge that introduces a cycle
-        assert!(!graph.add_edge(3, 1, nop));
+        assert!(graph.add_edge(3, 1, nop).is_err());
 
         // Add an edge that should reorder 0 to be after 4
-        assert!(graph.add_edge(4, 0, nop));
+        assert!(graph.add_edge(4, 0, nop).is_ok());
     }
 
     /// Fuzz the DiGraph implementation by adding a bunch of valid edges.
@@ -285,7 +298,7 @@ mod tests {
     /// This test generates all possible forward edges in a 100-node graph consisting of natural
     /// numbers, shuffles them, then adds them to the graph. This will always be a valid directed,
     /// acyclic graph because there is a trivial order (the natural numbers) but because the edges
-    /// are added in a random order the DiGraph will still occassionally need to reorder nodes.
+    /// are added in a random order the DiGraph will still occasionally need to reorder nodes.
     #[test]
     fn fuzz_digraph() {
         // Note: this fuzzer is quadratic in the number of nodes, so this cannot be too large or it
@@ -306,7 +319,7 @@ mod tests {
         let mut graph = DiGraph::default();
 
         for (x, y) in edges {
-            assert!(graph.add_edge(x, y, nop));
+            assert!(graph.add_edge(x, y, nop).is_ok());
         }
     }
 }

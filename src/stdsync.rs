@@ -696,7 +696,7 @@ pub mod tracing {
         }
 
         #[test]
-        #[should_panic(expected = "Mutex order graph should not have cycles")]
+        #[should_panic(expected = "Found cycle in mutex dependency graph")]
         fn test_detect_cycle() {
             let a = Mutex::new(());
             let b = Mutex::new(());
