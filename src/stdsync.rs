@@ -21,10 +21,14 @@
 pub use std::sync as raw;
 
 #[cfg(not(debug_assertions))]
-pub use std::sync::{Condvar, Mutex, MutexGuard, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
+pub use std::sync::{
+    Condvar, Mutex, MutexGuard, Once, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 
 #[cfg(debug_assertions)]
-pub use tracing::{Condvar, Mutex, MutexGuard, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
+pub use tracing::{
+    Condvar, Mutex, MutexGuard, Once, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 
 /// Dependency tracing versions of [`std::sync`].
 pub mod tracing {
@@ -427,8 +431,8 @@ pub mod tracing {
 
     /// Wrapper around [`std::sync::Once`].
     ///
-    /// Refer to the [crate-level][`crate`] documentaiton for the differences between this struct and
-    /// the one it wraps.
+    /// Refer to the [crate-level][`crate`] documentaiton for the differences between this struct
+    /// and the one it wraps.
     #[derive(Debug)]
     pub struct Once {
         inner: sync::Once,
@@ -476,6 +480,142 @@ pub mod tracing {
         /// Returns true if some `call_once` has completed successfully.
         pub fn is_completed(&self) -> bool {
             self.inner.is_completed()
+        }
+    }
+
+    /// Wrapper for [`std::sync::OnceLock`]
+    ///
+    /// The exact locking behaviour of [`std::sync::OnceLock`] is currently undefined, but may
+    /// deadlock in the event of reentrant initialization attempts. This wrapper participates in
+    /// cycle detection as normal and will therefore panic in the event of reentrancy.
+    ///
+    /// Most of this primitive's methods do not involve locking and as such are simply passed
+    /// through to the inner implementation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use tracing_mutex::stdsync::tracing::OnceLock;
+    ///
+    /// static LOCK: OnceLock<i32> = OnceLock::new();
+    /// assert!(LOCK.get().is_none());
+    ///
+    /// std::thread::spawn(|| {
+    ///    let value: &i32 = LOCK.get_or_init(|| 42);
+    ///    assert_eq!(value, &42);
+    /// }).join().unwrap();
+    ///
+    /// let value: Option<&i32> = LOCK.get();
+    /// assert_eq!(value, Some(&42));
+    /// ```
+    #[derive(Debug)]
+    pub struct OnceLock<T> {
+        id: LazyMutexId,
+        inner: sync::OnceLock<T>,
+    }
+
+    // N.B. this impl inlines everything that directly calls the inner implementation as there
+    // should be 0 overhead to doing so.
+    impl<T> OnceLock<T> {
+        /// Creates a new empty cell
+        pub const fn new() -> Self {
+            Self {
+                id: LazyMutexId::new(),
+                inner: sync::OnceLock::new(),
+            }
+        }
+
+        /// Gets a reference to the underlying value.
+        ///
+        /// This method does not attempt to lock and therefore does not participate in cycle
+        /// detection.
+        #[inline]
+        pub fn get(&self) -> Option<&T> {
+            self.inner.get()
+        }
+
+        /// Gets a mutable reference to the underlying value.
+        ///
+        /// This method does not attempt to lock and therefore does not participate in cycle
+        /// detection.
+        #[inline]
+        pub fn get_mut(&mut self) -> Option<&mut T> {
+            self.inner.get_mut()
+        }
+
+        /// Sets the contents of this cell to the underlying value
+        ///
+        /// As this method may block until initialization is complete, it participates in cycle
+        /// detection.
+        pub fn set(&self, value: T) -> Result<(), T> {
+            let _guard = self.id.get_borrowed();
+
+            self.inner.set(value)
+        }
+
+        /// Gets the contents of the cell, initializing it with `f` if the cell was empty.
+        ///
+        /// This method participates in cycle detection. Reentrancy is considered a cycle.
+        pub fn get_or_init<F>(&self, f: F) -> &T
+        where
+            F: FnOnce() -> T,
+        {
+            let _guard = self.id.get_borrowed();
+            self.inner.get_or_init(f)
+        }
+
+        /// Takes the value out of this `OnceLock`, moving it back to an uninitialized state.
+        ///
+        /// This method does not attempt to lock and therefore does not participate in cycle
+        /// detection.
+        #[inline]
+        pub fn take(&mut self) -> Option<T> {
+            self.inner.take()
+        }
+
+        /// Consumes the `OnceLock`, returning the wrapped value. Returns None if the cell was
+        /// empty.
+        ///
+        /// This method does not attempt to lock and therefore does not participate in cycle
+        /// detection.
+        #[inline]
+        pub fn into_inner(mut self) -> Option<T> {
+            self.take()
+        }
+    }
+
+    impl<T> Default for OnceLock<T> {
+        #[inline]
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl<T: PartialEq> PartialEq for OnceLock<T> {
+        #[inline]
+        fn eq(&self, other: &Self) -> bool {
+            self.inner == other.inner
+        }
+    }
+
+    impl<T: Eq> Eq for OnceLock<T> {}
+
+    impl<T: Clone> Clone for OnceLock<T> {
+        fn clone(&self) -> Self {
+            Self {
+                id: LazyMutexId::new(),
+                inner: self.inner.clone(),
+            }
+        }
+    }
+
+    impl<T> From<T> for OnceLock<T> {
+        #[inline]
+        fn from(value: T) -> Self {
+            Self {
+                id: LazyMutexId::new(),
+                inner: sync::OnceLock::from(value),
+            }
         }
     }
 

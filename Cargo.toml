@@ -10,7 +10,7 @@ keywords = ["mutex", "rwlock", "once", "thread"]
 description = "Ensure deadlock-free mutexes by allocating in order, or else."
 readme = "README.md"
 repository = "https://github.com/bertptrs/tracing-mutex"
-rust-version = "1.63"
+rust-version = "1.70"
 
 [package.metadata.docs.rs]
 # Build docs for all features so the documentation is more complete
@@ -19,7 +19,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-lazy_static = "1"
 lock_api = { version = "0.4", optional = true }
 parking_lot = { version = "0.12", optional = true }
 

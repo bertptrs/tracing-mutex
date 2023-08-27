@@ -47,20 +47,17 @@
 //! [paper]: https://whileydave.com/publications/pk07_jea/
 #![cfg_attr(docsrs, feature(doc_cfg))]
 use std::cell::RefCell;
-use std::cell::UnsafeCell;
 use std::fmt;
 use std::marker::PhantomData;
-use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
-use std::sync::Once;
+use std::sync::OnceLock;
 use std::sync::PoisonError;
 
-use lazy_static::lazy_static;
 #[cfg(feature = "lockapi")]
 #[cfg_attr(docsrs, doc(cfg(feature = "lockapi")))]
 pub use lock_api;
@@ -79,21 +76,12 @@ pub mod lockapi;
 pub mod parkinglot;
 pub mod stdsync;
 
-/// Counter for Mutex IDs. Atomic avoids the need for locking.
-///
-/// Should be part of the `MutexID` impl but static items are not yet a thing.
-static ID_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
-
 thread_local! {
     /// Stack to track which locks are held
     ///
     /// Assuming that locks are roughly released in the reverse order in which they were acquired,
     /// a stack should be more efficient to keep track of the current state than a set would be.
     static HELD_LOCKS: RefCell<Vec<usize>> = RefCell::new(Vec::new());
-}
-
-lazy_static! {
-    static ref DEPENDENCY_GRAPH: Mutex<DiGraph<usize>> = Default::default();
 }
 
 /// Dedicated ID type for Mutexes
@@ -114,6 +102,9 @@ impl MutexId {
     /// This function may panic when there are no more mutex IDs available. The number of mutex ids
     /// is `usize::MAX - 1` which should be plenty for most practical applications.
     pub fn new() -> Self {
+        // Counter for Mutex IDs. Atomic avoids the need for locking.
+        static ID_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+
         ID_SEQUENCE
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |id| id.checked_add(1))
             .map(Self)
@@ -207,17 +198,13 @@ impl Drop for MutexId {
 ///
 /// This type can be largely replaced once std::lazy gets stabilized.
 struct LazyMutexId {
-    inner: UnsafeCell<MaybeUninit<MutexId>>,
-    setter: Once,
-    _marker: PhantomData<MutexId>,
+    inner: OnceLock<MutexId>,
 }
 
 impl LazyMutexId {
     pub const fn new() -> Self {
         Self {
-            inner: UnsafeCell::new(MaybeUninit::uninit()),
-            setter: Once::new(),
-            _marker: PhantomData,
+            inner: OnceLock::new(),
         }
     }
 }
@@ -234,44 +221,11 @@ impl Default for LazyMutexId {
     }
 }
 
-/// Safety: the UnsafeCell is guaranteed to only be accessed mutably from a `Once`.
-unsafe impl Sync for LazyMutexId {}
-
 impl Deref for LazyMutexId {
     type Target = MutexId;
 
     fn deref(&self) -> &Self::Target {
-        self.setter.call_once(|| {
-            // Safety: this function is only called once, so only one mutable reference should exist
-            // at a time.
-            unsafe {
-                *self.inner.get() = MaybeUninit::new(MutexId::new());
-            }
-        });
-
-        // Safety: after the above Once runs, there are no longer any mutable references, so we can
-        // hand this out safely.
-        //
-        // Explanation of this monstrosity:
-        //
-        // - Get a pointer to the data from the UnsafeCell
-        // - Dereference that to get a reference to the underlying MaybeUninit
-        // - Use as_ptr on MaybeUninit to get a pointer to the initialized MutexID
-        // - Dereference the pointer to turn in into a reference as intended.
-        //
-        // This should get slightly nicer once `maybe_uninit_extra` is stabilized.
-        unsafe { &*((*self.inner.get()).as_ptr()) }
-    }
-}
-
-impl Drop for LazyMutexId {
-    fn drop(&mut self) {
-        if self.setter.is_completed() {
-            // We have a valid mutex ID and need to drop it
-
-            // Safety: we know that this pointer is valid because the initializer has successfully run.
-            unsafe { (*self.inner.get()).assume_init_drop() };
-        }
+        self.inner.get_or_init(MutexId::new)
     }
 }
 
@@ -307,7 +261,10 @@ impl<'a> Drop for BorrowedMutex<'a> {
 
 /// Get a reference to the current dependency graph
 fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
+    static DEPENDENCY_GRAPH: OnceLock<Mutex<DiGraph<usize>>> = OnceLock::new();
+
     DEPENDENCY_GRAPH
+        .get_or_init(Default::default)
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
 }
