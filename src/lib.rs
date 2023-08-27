@@ -46,6 +46,7 @@
 //!
 //! [paper]: https://whileydave.com/publications/pk07_jea/
 #![cfg_attr(docsrs, feature(doc_cfg))]
+use std::backtrace::Backtrace;
 use std::cell::RefCell;
 use std::fmt;
 use std::marker::PhantomData;
@@ -53,6 +54,7 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::OnceLock;
@@ -141,7 +143,7 @@ impl MutexId {
             if let Some(&previous) = locks.borrow().last() {
                 let mut graph = get_dependency_graph();
 
-                !graph.add_edge(previous, self.value())
+                !graph.add_edge(previous, self.value(), MutexDep::capture)
             } else {
                 false
             }
@@ -259,9 +261,18 @@ impl<'a> Drop for BorrowedMutex<'a> {
     }
 }
 
+#[derive(Clone)]
+struct MutexDep(Arc<Backtrace>);
+
+impl MutexDep {
+    pub fn capture() -> Self {
+        Self(Arc::new(Backtrace::capture()))
+    }
+}
+
 /// Get a reference to the current dependency graph
-fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
-    static DEPENDENCY_GRAPH: OnceLock<Mutex<DiGraph<usize>>> = OnceLock::new();
+fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize, MutexDep>> {
+    static DEPENDENCY_GRAPH: OnceLock<Mutex<DiGraph<usize, MutexDep>>> = OnceLock::new();
 
     DEPENDENCY_GRAPH
         .get_or_init(Default::default)
@@ -292,11 +303,11 @@ mod tests {
         let c = LazyMutexId::new();
 
         let mut graph = get_dependency_graph();
-        assert!(graph.add_edge(a.value(), b.value()));
-        assert!(graph.add_edge(b.value(), c.value()));
+        assert!(graph.add_edge(a.value(), b.value(), MutexDep::capture));
+        assert!(graph.add_edge(b.value(), c.value(), MutexDep::capture));
 
         // Creating an edge c → a should fail as it introduces a cycle.
-        assert!(!graph.add_edge(c.value(), a.value()));
+        assert!(!graph.add_edge(c.value(), a.value(), MutexDep::capture));
 
         // Drop graph handle so we can drop vertices without deadlocking
         drop(graph);
@@ -304,7 +315,7 @@ mod tests {
         drop(b);
 
         // If b's destructor correctly ran correctly we can now add an edge from c to a.
-        assert!(get_dependency_graph().add_edge(c.value(), a.value()));
+        assert!(get_dependency_graph().add_edge(c.value(), a.value(), MutexDep::capture));
     }
 
     /// Test creating a cycle, then panicking.
