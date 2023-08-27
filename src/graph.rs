@@ -25,8 +25,9 @@ where
     V: Eq + Hash + Copy,
 {
     nodes: HashMap<V, Node<V>>,
-    /// Next topological sort order
-    next_ord: Order,
+    // Instead of reordering the orders in the graph whenever a node is deleted, we maintain a list
+    // of unused ids that can be handed out later again.
+    unused_order: Vec<Order>,
 }
 
 #[derive(Debug)]
@@ -55,11 +56,17 @@ where
     ///
     /// New nodes are appended to the end of the topological order when added.
     fn add_node(&mut self, n: V) -> (&mut HashSet<V>, &mut HashSet<V>, Order) {
-        let next_ord = &mut self.next_ord;
+        // need to compute next id before the call to entry() to avoid duplicate borrow of nodes
+        let fallback_id = self.nodes.len();
 
         let node = self.nodes.entry(n).or_insert_with(|| {
-            let order = *next_ord;
-            *next_ord = next_ord.checked_add(1).expect("Topological order overflow");
+            let order = if let Some(id) = self.unused_order.pop() {
+                // Reuse discarded ordering entry
+                id
+            } else {
+                // Allocate new order id
+                fallback_id
+            };
 
             Node {
                 ord: Cell::new(order),
@@ -77,8 +84,11 @@ where
             Some(Node {
                 out_edges,
                 in_edges,
-                ..
+                ord,
             }) => {
+                // Return ordering to the pool of unused ones
+                self.unused_order.push(ord.get());
+
                 out_edges.into_iter().for_each(|m| {
                     self.nodes.get_mut(&m).unwrap().in_edges.remove(&n);
                 });
