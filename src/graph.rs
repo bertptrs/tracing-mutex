@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
@@ -19,23 +20,24 @@ type Order = usize;
 /// visibly changed.
 ///
 /// [paper]: https://whileydave.com/publications/pk07_jea/
-#[derive(Default, Debug)]
-pub struct DiGraph<V>
+#[derive(Debug)]
+pub struct DiGraph<V, E>
 where
     V: Eq + Hash + Copy,
 {
-    nodes: HashMap<V, Node<V>>,
-    /// Next topological sort order
-    next_ord: Order,
+    nodes: HashMap<V, Node<V, E>>,
+    // Instead of reordering the orders in the graph whenever a node is deleted, we maintain a list
+    // of unused ids that can be handed out later again.
+    unused_order: Vec<Order>,
 }
 
 #[derive(Debug)]
-struct Node<V>
+struct Node<V, E>
 where
     V: Eq + Hash + Clone,
 {
     in_edges: HashSet<V>,
-    out_edges: HashSet<V>,
+    out_edges: HashMap<V, E>,
     // The "Ord" field is a Cell to ensure we can update it in an immutable context.
     // `std::collections::HashMap` doesn't let you have multiple mutable references to elements, but
     // this way we can use immutable references and still update `ord`. This saves quite a few
@@ -43,7 +45,7 @@ where
     ord: Cell<Order>,
 }
 
-impl<V> DiGraph<V>
+impl<V, E> DiGraph<V, E>
 where
     V: Eq + Hash + Copy,
 {
@@ -54,12 +56,18 @@ where
     /// the node in the topological order.
     ///
     /// New nodes are appended to the end of the topological order when added.
-    fn add_node(&mut self, n: V) -> (&mut HashSet<V>, &mut HashSet<V>, Order) {
-        let next_ord = &mut self.next_ord;
+    fn add_node(&mut self, n: V) -> (&mut HashSet<V>, &mut HashMap<V, E>, Order) {
+        // need to compute next id before the call to entry() to avoid duplicate borrow of nodes
+        let fallback_id = self.nodes.len();
 
         let node = self.nodes.entry(n).or_insert_with(|| {
-            let order = *next_ord;
-            *next_ord = next_ord.checked_add(1).expect("Topological order overflow");
+            let order = if let Some(id) = self.unused_order.pop() {
+                // Reuse discarded ordering entry
+                id
+            } else {
+                // Allocate new order id
+                fallback_id
+            };
 
             Node {
                 ord: Cell::new(order),
@@ -77,9 +85,12 @@ where
             Some(Node {
                 out_edges,
                 in_edges,
-                ..
+                ord,
             }) => {
-                out_edges.into_iter().for_each(|m| {
+                // Return ordering to the pool of unused ones
+                self.unused_order.push(ord.get());
+
+                out_edges.into_keys().for_each(|m| {
                     self.nodes.get_mut(&m).unwrap().in_edges.remove(&n);
                 });
 
@@ -96,18 +107,29 @@ where
     ///
     /// Nodes, both from and to, are created as needed when creating new edges. If the new edge
     /// would introduce a cycle, the edge is rejected and `false` is returned.
-    pub(crate) fn add_edge(&mut self, x: V, y: V) -> bool {
+    ///
+    /// # Errors
+    ///
+    /// If the edge would introduce the cycle, the underlying graph is not modified and a list of
+    /// all the edge data in the would-be cycle is returned instead.
+    pub(crate) fn add_edge(&mut self, x: V, y: V, e: impl FnOnce() -> E) -> Result<(), Vec<E>>
+    where
+        E: Clone,
+    {
         if x == y {
             // self-edges are always considered cycles
-            return false;
+            return Err(Vec::new());
         }
 
         let (_, out_edges, ub) = self.add_node(x);
 
-        if !out_edges.insert(y) {
-            // Edge already exists, nothing to be done
-            return true;
-        }
+        match out_edges.entry(y) {
+            Entry::Occupied(_) => {
+                // Edge already exists, nothing to be done
+                return Ok(());
+            }
+            Entry::Vacant(entry) => entry.insert(e()),
+        };
 
         let (in_edges, _, lb) = self.add_node(y);
 
@@ -119,7 +141,7 @@ where
             let mut delta_f = Vec::new();
             let mut delta_b = Vec::new();
 
-            if !self.dfs_f(&self.nodes[&y], ub, &mut visited, &mut delta_f) {
+            if let Err(cycle) = self.dfs_f(&self.nodes[&y], ub, &mut visited, &mut delta_f) {
                 // This edge introduces a cycle, so we want to reject it and remove it from the
                 // graph again to keep the "does not contain cycles" invariant.
 
@@ -129,7 +151,7 @@ where
                 self.nodes.get_mut(&x).map(|node| node.out_edges.remove(&y));
 
                 // No edge was added
-                return false;
+                return Err(cycle);
             }
 
             // No need to check as we should've found the cycle on the forward pass
@@ -141,44 +163,49 @@ where
             self.reorder(delta_f, delta_b);
         }
 
-        true
+        Ok(())
     }
 
     /// Forwards depth-first-search
     fn dfs_f<'a>(
         &'a self,
-        n: &'a Node<V>,
+        n: &'a Node<V, E>,
         ub: Order,
         visited: &mut HashSet<V>,
-        delta_f: &mut Vec<&'a Node<V>>,
-    ) -> bool {
+        delta_f: &mut Vec<&'a Node<V, E>>,
+    ) -> Result<(), Vec<E>>
+    where
+        E: Clone,
+    {
         delta_f.push(n);
 
-        n.out_edges.iter().all(|w| {
+        for (w, e) in &n.out_edges {
             let node = &self.nodes[w];
             let ord = node.ord.get();
 
             if ord == ub {
                 // Found a cycle
-                false
+                return Err(vec![e.clone()]);
             } else if !visited.contains(w) && ord < ub {
                 // Need to check recursively
                 visited.insert(*w);
-                self.dfs_f(node, ub, visited, delta_f)
-            } else {
-                // Already seen this one or not interesting
-                true
+                if let Err(mut chain) = self.dfs_f(node, ub, visited, delta_f) {
+                    chain.push(e.clone());
+                    return Err(chain);
+                }
             }
-        })
+        }
+
+        Ok(())
     }
 
     /// Backwards depth-first-search
     fn dfs_b<'a>(
         &'a self,
-        n: &'a Node<V>,
+        n: &'a Node<V, E>,
         lb: Order,
         visited: &mut HashSet<V>,
-        delta_b: &mut Vec<&'a Node<V>>,
+        delta_b: &mut Vec<&'a Node<V, E>>,
     ) {
         delta_b.push(n);
 
@@ -192,7 +219,7 @@ where
         }
     }
 
-    fn reorder(&self, mut delta_f: Vec<&Node<V>>, mut delta_b: Vec<&Node<V>>) {
+    fn reorder(&self, mut delta_f: Vec<&Node<V, E>>, mut delta_b: Vec<&Node<V, E>>) {
         self.sort(&mut delta_f);
         self.sort(&mut delta_b);
 
@@ -213,9 +240,22 @@ where
         }
     }
 
-    fn sort(&self, ids: &mut [&Node<V>]) {
+    fn sort(&self, ids: &mut [&Node<V, E>]) {
         // Can use unstable sort because mutex ids should not be equal
         ids.sort_unstable_by_key(|v| &v.ord);
+    }
+}
+
+// Manual `Default` impl as derive causes unnecessarily strong bounds.
+impl<V, E> Default for DiGraph<V, E>
+where
+    V: Eq + Hash + Copy,
+{
+    fn default() -> Self {
+        Self {
+            nodes: Default::default(),
+            unused_order: Default::default(),
+        }
     }
 }
 
@@ -226,12 +266,14 @@ mod tests {
 
     use super::*;
 
+    fn nop() {}
+
     #[test]
     fn test_no_self_cycle() {
         // Regression test for https://github.com/bertptrs/tracing-mutex/issues/7
         let mut graph = DiGraph::default();
 
-        assert!(!graph.add_edge(1, 1));
+        assert!(graph.add_edge(1, 1, nop).is_err());
     }
 
     #[test]
@@ -239,16 +281,16 @@ mod tests {
         let mut graph = DiGraph::default();
 
         // Add some safe edges
-        assert!(graph.add_edge(0, 1));
-        assert!(graph.add_edge(1, 2));
-        assert!(graph.add_edge(2, 3));
-        assert!(graph.add_edge(4, 2));
+        assert!(graph.add_edge(0, 1, nop).is_ok());
+        assert!(graph.add_edge(1, 2, nop).is_ok());
+        assert!(graph.add_edge(2, 3, nop).is_ok());
+        assert!(graph.add_edge(4, 2, nop).is_ok());
 
         // Try to add an edge that introduces a cycle
-        assert!(!graph.add_edge(3, 1));
+        assert!(graph.add_edge(3, 1, nop).is_err());
 
         // Add an edge that should reorder 0 to be after 4
-        assert!(graph.add_edge(4, 0));
+        assert!(graph.add_edge(4, 0, nop).is_ok());
     }
 
     /// Fuzz the DiGraph implementation by adding a bunch of valid edges.
@@ -256,7 +298,7 @@ mod tests {
     /// This test generates all possible forward edges in a 100-node graph consisting of natural
     /// numbers, shuffles them, then adds them to the graph. This will always be a valid directed,
     /// acyclic graph because there is a trivial order (the natural numbers) but because the edges
-    /// are added in a random order the DiGraph will still occassionally need to reorder nodes.
+    /// are added in a random order the DiGraph will still occasionally need to reorder nodes.
     #[test]
     fn fuzz_digraph() {
         // Note: this fuzzer is quadratic in the number of nodes, so this cannot be too large or it
@@ -277,7 +319,7 @@ mod tests {
         let mut graph = DiGraph::default();
 
         for (x, y) in edges {
-            assert!(graph.add_edge(x, y));
+            assert!(graph.add_edge(x, y, nop).is_ok());
         }
     }
 }

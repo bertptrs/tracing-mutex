@@ -64,6 +64,8 @@ pub use lock_api;
 #[cfg(feature = "parkinglot")]
 #[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
 pub use parking_lot;
+use reporting::Dep;
+use reporting::Reportable;
 
 use crate::graph::DiGraph;
 
@@ -74,6 +76,7 @@ pub mod lockapi;
 #[cfg(feature = "parkinglot")]
 #[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
 pub mod parkinglot;
+mod reporting;
 pub mod stdsync;
 
 thread_local! {
@@ -137,19 +140,18 @@ impl MutexId {
     ///
     /// This method panics if the new dependency would introduce a cycle.
     pub fn mark_held(&self) {
-        let creates_cycle = HELD_LOCKS.with(|locks| {
+        let opt_cycle = HELD_LOCKS.with(|locks| {
             if let Some(&previous) = locks.borrow().last() {
                 let mut graph = get_dependency_graph();
 
-                !graph.add_edge(previous, self.value())
+                graph.add_edge(previous, self.value(), Dep::capture).err()
             } else {
-                false
+                None
             }
         });
 
-        if creates_cycle {
-            // Panic without holding the lock to avoid needlessly poisoning it
-            panic!("Mutex order graph should not have cycles");
+        if let Some(cycle) = opt_cycle {
+            panic!("{}", Dep::panic_message(&cycle))
         }
 
         HELD_LOCKS.with(|locks| locks.borrow_mut().push(self.value()));
@@ -260,8 +262,8 @@ impl<'a> Drop for BorrowedMutex<'a> {
 }
 
 /// Get a reference to the current dependency graph
-fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize>> {
-    static DEPENDENCY_GRAPH: OnceLock<Mutex<DiGraph<usize>>> = OnceLock::new();
+fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize, Dep>> {
+    static DEPENDENCY_GRAPH: OnceLock<Mutex<DiGraph<usize, Dep>>> = OnceLock::new();
 
     DEPENDENCY_GRAPH
         .get_or_init(Default::default)
@@ -292,11 +294,11 @@ mod tests {
         let c = LazyMutexId::new();
 
         let mut graph = get_dependency_graph();
-        assert!(graph.add_edge(a.value(), b.value()));
-        assert!(graph.add_edge(b.value(), c.value()));
+        assert!(graph.add_edge(a.value(), b.value(), Dep::capture).is_ok());
+        assert!(graph.add_edge(b.value(), c.value(), Dep::capture).is_ok());
 
         // Creating an edge c → a should fail as it introduces a cycle.
-        assert!(!graph.add_edge(c.value(), a.value()));
+        assert!(graph.add_edge(c.value(), a.value(), Dep::capture).is_err());
 
         // Drop graph handle so we can drop vertices without deadlocking
         drop(graph);
@@ -304,7 +306,9 @@ mod tests {
         drop(b);
 
         // If b's destructor correctly ran correctly we can now add an edge from c to a.
-        assert!(get_dependency_graph().add_edge(c.value(), a.value()));
+        assert!(get_dependency_graph()
+            .add_edge(c.value(), a.value(), Dep::capture)
+            .is_ok());
     }
 
     /// Test creating a cycle, then panicking.

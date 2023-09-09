@@ -31,6 +31,8 @@ name = "mutex"
 harness = false
 
 [features]
+default = ["backtraces"]
+backtraces = []
 # Feature names do not match crate names pending namespaced features.
 lockapi = ["lock_api"]
 parkinglot = ["parking_lot", "lockapi"]
