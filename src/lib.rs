@@ -18,8 +18,23 @@
 //! # Structure
 //!
 //! Each module in this crate exposes wrappers for a specific base-mutex with dependency trakcing
-//! added. For now, that is limited to [`stdsync`] which provides wrappers for the base locks in the
-//! standard library. More back-ends may be added as features in the future.
+//! added. This includes [`stdsync`] which provides wrappers for the base locks in the standard
+//! library, and more depending on enabled compile-time features. More back-ends may be added as
+//! features in the future.
+//!
+//! # Feature flags
+//!
+//! `tracing-mutex` uses feature flags to reduce the impact of this crate on both your compile time
+//! and runtime overhead. Below are the available flags. Modules are annotated with the features
+//! they require.
+//!
+//! - `backtraces`: Enables capturing backtraces of mutex dependencies, to make it easier to
+//!   determine what sequence of events would trigger a deadlock. This is enabled by default, but if
+//!   the performance overhead is unaccceptable, it can be disabled by disabling default features.
+//!
+//! - `lockapi`: Enables the wrapper lock for [`lock_api`][lock_api] locks
+//!
+//! - `parkinglot`: Enables wrapper types for [`parking_lot`][parking_lot] mutexes
 //!
 //! # Performance considerations
 //!
@@ -44,7 +59,13 @@
 //! (such as [`stdsync::Mutex`]) which evaluate to a tracing mutex when debug assertions are
 //! enabled, and to the underlying mutex when they're not.
 //!
+//! For ease of debugging, this crate will, by default, capture a backtrace when establishing a new
+//! dependency between two mutexes. This has an additional overhead of over 60%. If this additional
+//! debugging aid is not required, it can be disabled by disabling default features.
+//!
 //! [paper]: https://whileydave.com/publications/pk07_jea/
+//! [lock_api]: https://docs.rs/lock_api/0.4/lock_api/index.html
+//! [parking_lot]: https://docs.rs/parking_lot/0.12.1/parking_lot/
 #![cfg_attr(docsrs, feature(doc_cfg))]
 use std::cell::RefCell;
 use std::fmt;
