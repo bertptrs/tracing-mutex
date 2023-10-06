@@ -56,10 +56,10 @@ introduce a cyclic dependency between your locks, the operation panics instead. 
 immediately notice the cyclic dependency rather than be eventually surprised by it in production.
 
 Mutex tracing is efficient, but it is not completely overhead-free. If you cannot spare the
-performance penalty in your production environment, this library also offers debug-only tracing.
-`DebugMutex`, also found in the `stdsync` module, is a type alias that evaluates to `TracingMutex`
-when debug assertions are enabled, and to `Mutex` when they are not. Similar helper types are
-available for other synchronization primitives.
+performance penalty in your production environment, this library also offers debug-only tracing. The
+type aliases in `tracing_mutex::stdsync` correspond to tracing primitives from
+`tracing_mutex::stdsync::tracing` when debug assertions are enabled, and to primitives from
+`std::sync::Mutex` when they are not. A similar structure exists for other 
 
 The minimum supported Rust version is 1.70. Increasing this is not considered a breaking change, but
 will be avoided within semver-compatible releases if possible.
@@ -68,6 +68,7 @@ will be avoided within semver-compatible releases if possible.
 
 - Dependency-tracking wrappers for all locking primitives
 - Optional opt-out for release mode code
+- Optional backtrace capture to aid with reproducing cyclic mutex chains
 - Support for primitives from:
   - `std::sync`
   - `parking_lot`
@@ -76,7 +77,6 @@ will be avoided within semver-compatible releases if possible.
 ## Future improvements
 
 - Improve performance in lock tracing
-- Optional logging to make debugging easier
 - Better and configurable error handling when detecting cyclic dependencies
 - Support for other locking libraries
 - Support for async locking libraries
