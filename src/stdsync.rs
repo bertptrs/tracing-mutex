@@ -30,6 +30,12 @@ pub use tracing::{
     Condvar, Mutex, MutexGuard, Once, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
 
+#[cfg(all(has_std__sync__LazyLock, debug_assertions))]
+pub use tracing::LazyLock;
+
+#[cfg(all(has_std__sync__LazyLock, not(debug_assertions)))]
+pub use std::sync::LazyLock;
+
 /// Dependency tracing versions of [`std::sync`].
 pub mod tracing {
     use std::fmt;
@@ -46,6 +52,12 @@ pub mod tracing {
 
     use crate::BorrowedMutex;
     use crate::LazyMutexId;
+
+    #[cfg(has_std__sync__LazyLock)]
+    pub use lazy_lock::LazyLock;
+
+    #[cfg(has_std__sync__LazyLock)]
+    mod lazy_lock;
 
     /// Wrapper for [`std::sync::Mutex`].
     ///
@@ -460,8 +472,7 @@ pub mod tracing {
         where
             F: FnOnce(),
         {
-            let _guard = self.mutex_id.get_borrowed();
-            self.inner.call_once(f);
+            self.mutex_id.with_held(|| self.inner.call_once(f))
         }
 
         /// Performs the same operation as [`call_once`][Once::call_once] except it ignores
@@ -475,8 +486,7 @@ pub mod tracing {
         where
             F: FnOnce(&OnceState),
         {
-            let _guard = self.mutex_id.get_borrowed();
-            self.inner.call_once_force(f);
+            self.mutex_id.with_held(|| self.inner.call_once_force(f))
         }
 
         /// Returns true if some `call_once` has completed successfully.
@@ -550,9 +560,7 @@ pub mod tracing {
         /// As this method may block until initialization is complete, it participates in cycle
         /// detection.
         pub fn set(&self, value: T) -> Result<(), T> {
-            let _guard = self.id.get_borrowed();
-
-            self.inner.set(value)
+            self.id.with_held(|| self.inner.set(value))
         }
 
         /// Gets the contents of the cell, initializing it with `f` if the cell was empty.
@@ -562,8 +570,7 @@ pub mod tracing {
         where
             F: FnOnce() -> T,
         {
-            let _guard = self.id.get_borrowed();
-            self.inner.get_or_init(f)
+            self.id.with_held(|| self.inner.get_or_init(f))
         }
 
         /// Takes the value out of this `OnceLock`, moving it back to an uninitialized state.

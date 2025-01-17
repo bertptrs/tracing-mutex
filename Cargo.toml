@@ -36,3 +36,6 @@ backtraces = []
 # Feature names do not match crate names pending namespaced features.
 lockapi = ["lock_api"]
 parkinglot = ["parking_lot", "lockapi"]
+
+[build-dependencies]
+autocfg = "1.4.0"
