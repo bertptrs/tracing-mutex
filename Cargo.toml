@@ -30,6 +30,10 @@ rand = "0.8"
 name = "mutex"
 harness = false
 
+[[example]]
+name = "drop_in_parking_lot"
+required-features = ["parkinglot"]
+
 [features]
 default = ["backtraces"]
 backtraces = []
