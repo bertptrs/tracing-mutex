@@ -11,6 +11,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - On Rust 1.80 or newer, a wrapper for `std::sync::LazyLock` is now available. The MSRV has not been
   changed; older versions simply don't get this wrapper.
 
+- Added missing const-initialisation wrappers for `parking_lot`. The API interface for
+  `tracing_mutex::parkinglot` is now identical to `parking_lot`, and an example showing how to use
+  it as a drop-in replacement was added.
+
 ### Changed
 
 - Reworked CI to better test continued support for the minimum supported Rust version
