@@ -90,6 +90,8 @@ unsafe impl<T> RawMutex for TracingWrapper<T>
 where
     T: RawMutex,
 {
+    // Known issue with legacy initialisers, allow
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         inner: T::INIT,
         id: LazyMutexId::new(),
@@ -154,6 +156,8 @@ unsafe impl<T> RawRwLock for TracingWrapper<T>
 where
     T: RawRwLock,
 {
+    // Known issue with legacy initialisers, allow
+    #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self {
         inner: T::INIT,
         id: LazyMutexId::new(),

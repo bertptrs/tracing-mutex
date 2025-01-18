@@ -105,7 +105,7 @@ thread_local! {
     ///
     /// Assuming that locks are roughly released in the reverse order in which they were acquired,
     /// a stack should be more efficient to keep track of the current state than a set would be.
-    static HELD_LOCKS: RefCell<Vec<usize>> = RefCell::new(Vec::new());
+    static HELD_LOCKS: RefCell<Vec<usize>> = const { RefCell::new(Vec::new()) };
 }
 
 /// Dedicated ID type for Mutexes
@@ -275,7 +275,7 @@ struct BorrowedMutex<'a> {
 ///
 /// This function panics if the lock did not appear to be handled by this thread. If that happens,
 /// that is an indication of a serious design flaw in this library.
-impl<'a> Drop for BorrowedMutex<'a> {
+impl Drop for BorrowedMutex<'_> {
     fn drop(&mut self) {
         // Safety: the only way to get a BorrowedMutex is by locking the mutex.
         unsafe { self.id.mark_released() };
