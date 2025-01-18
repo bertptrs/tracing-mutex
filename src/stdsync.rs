@@ -161,7 +161,7 @@ pub mod tracing {
         }
     }
 
-    impl<'a, T> Deref for MutexGuard<'a, T> {
+    impl<T> Deref for MutexGuard<'_, T> {
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
@@ -169,13 +169,13 @@ pub mod tracing {
         }
     }
 
-    impl<'a, T> DerefMut for MutexGuard<'a, T> {
+    impl<T> DerefMut for MutexGuard<'_, T> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             &mut self.inner
         }
     }
 
-    impl<'a, T: fmt::Display> fmt::Display for MutexGuard<'a, T> {
+    impl<T: fmt::Display> fmt::Display for MutexGuard<'_, T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             self.inner.fmt(f)
         }
@@ -409,7 +409,7 @@ pub mod tracing {
         }
     }
 
-    impl<'a, L, T> Deref for TracingRwLockGuard<'a, L>
+    impl<L, T> Deref for TracingRwLockGuard<'_, L>
     where
         L: Deref<Target = T>,
     {
@@ -420,7 +420,7 @@ pub mod tracing {
         }
     }
 
-    impl<'a, T, L> DerefMut for TracingRwLockGuard<'a, L>
+    impl<T, L> DerefMut for TracingRwLockGuard<'_, L>
     where
         L: Deref<Target = T> + DerefMut,
     {
@@ -439,6 +439,8 @@ pub mod tracing {
         mutex_id: LazyMutexId,
     }
 
+    // New without default is intentional, `std::sync::Once` doesn't implement it either
+    #[allow(clippy::new_without_default)]
     impl Once {
         /// Create a new `Once` value.
         pub const fn new() -> Self {
