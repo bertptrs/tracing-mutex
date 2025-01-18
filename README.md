@@ -36,7 +36,7 @@ Add this dependency to your `Cargo.lock` file like any other:
 
 ```toml
 [dependencies]
-tracing-mutex = "0.2"
+tracing-mutex = "0.3"
 ```
 
 Then use the locks provided by this library instead of the ones you would use otherwise.

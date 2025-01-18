@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- On Rust 1.80 or newer, a wrapper for `std::sync::LazyLock` is now available. The MSRV has not been
+  changed; older versions simply don't get this wrapper.
+
 ### Changed
 
 - Reworked CI to better test continued support for the minimum supported Rust version
