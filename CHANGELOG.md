@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Reworked CI to better test continued support for the minimum supported Rust version
+
 ## [0.3.0] - 2023-09-09
 
 ### Added
