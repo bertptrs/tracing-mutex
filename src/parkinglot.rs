@@ -138,16 +138,14 @@ pub mod tracing {
         /// This method will panic if `f` panics, poisoning this `Once`. In addition, this function
         /// panics when the lock acquisition order is determined to be inconsistent.
         pub fn call_once(&self, f: impl FnOnce()) {
-            let _borrow = self.id.get_borrowed();
-            self.inner.call_once(f);
+            self.id.with_held(|| self.inner.call_once(f));
         }
 
         /// Performs the given initialization routine once and only once.
         ///
         /// This method is identical to [`Once::call_once`] except it ignores poisoning.
         pub fn call_once_force(&self, f: impl FnOnce(OnceState)) {
-            let _borrow = self.id.get_borrowed();
-            self.inner.call_once_force(f);
+            self.id.with_held(|| self.inner.call_once_force(f));
         }
     }
 }

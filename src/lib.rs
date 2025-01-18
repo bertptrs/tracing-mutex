@@ -193,6 +193,14 @@ impl MutexId {
             unreachable!("Tried to drop lock for mutex {:?} but it wasn't held", self)
         });
     }
+
+    /// Execute the given closure while the guard is held.
+    pub fn with_held<T>(&self, f: impl FnOnce() -> T) -> T {
+        // Note: we MUST construct the RAII guard, we cannot simply mark held + mark released, as
+        // f() may panic and corrupt our state.
+        let _guard = self.get_borrowed();
+        f()
+    }
 }
 
 impl Default for MutexId {
