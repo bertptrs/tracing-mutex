@@ -29,6 +29,8 @@ use crate::LazyMutexId;
 /// println!("{}", *LOCK);
 /// ```
 pub struct LazyLock<T, F = fn() -> T> {
+    // MSRV violation is fine, this is gated behind a cfg! check
+    #[allow(clippy::incompatible_msrv)]
     inner: std::sync::LazyLock<T, F>,
     id: LazyMutexId,
 }
@@ -38,6 +40,8 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     pub const fn new(f: F) -> LazyLock<T, F> {
         Self {
             id: LazyMutexId::new(),
+            // MSRV violation is fine, this is gated behind a cfg! check
+            #[allow(clippy::incompatible_msrv)]
             inner: std::sync::LazyLock::new(f),
         }
     }
@@ -46,7 +50,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     ///
     /// This is equivalent to dereferencing, but is more explicit.
     pub fn force(this: &LazyLock<T, F>) -> &T {
-        &*this
+        this
     }
 }
 
