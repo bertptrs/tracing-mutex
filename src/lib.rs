@@ -99,6 +99,7 @@ pub mod lockapi;
 pub mod parkinglot;
 mod reporting;
 pub mod stdsync;
+pub mod util;
 
 thread_local! {
     /// Stack to track which locks are held

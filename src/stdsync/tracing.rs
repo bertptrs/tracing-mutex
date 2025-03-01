@@ -10,6 +10,7 @@ use std::sync::TryLockResult;
 use std::sync::WaitTimeoutResult;
 use std::time::Duration;
 
+use crate::util::PrivateTraced;
 use crate::BorrowedMutex;
 use crate::LazyMutexId;
 
@@ -124,6 +125,12 @@ impl<T> Mutex<T> {
     /// Unwrap the mutex and return its inner value.
     pub fn into_inner(self) -> LockResult<T> {
         self.inner.into_inner()
+    }
+}
+
+impl<T> PrivateTraced for Mutex<T> {
+    fn get_id(&self) -> &crate::MutexId {
+        &self.id
     }
 }
 
@@ -375,6 +382,12 @@ impl<T> RwLock<T> {
     }
 }
 
+impl<T> PrivateTraced for RwLock<T> {
+    fn get_id(&self) -> &crate::MutexId {
+        &self.id
+    }
+}
+
 impl<T> From<T> for RwLock<T> {
     fn from(t: T) -> Self {
         Self::new(t)
@@ -452,6 +465,12 @@ impl Once {
     /// Returns true if some `call_once` has completed successfully.
     pub fn is_completed(&self) -> bool {
         self.inner.is_completed()
+    }
+}
+
+impl PrivateTraced for Once {
+    fn get_id(&self) -> &crate::MutexId {
+        &self.mutex_id
     }
 }
 
@@ -550,6 +569,12 @@ impl<T> OnceLock<T> {
     #[inline]
     pub fn into_inner(mut self) -> Option<T> {
         self.take()
+    }
+}
+
+impl<T> PrivateTraced for OnceLock<T> {
+    fn get_id(&self) -> &crate::MutexId {
+        &self.id
     }
 }
 

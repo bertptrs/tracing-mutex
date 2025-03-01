@@ -23,7 +23,9 @@ use lock_api::RawRwLockUpgradeDowngrade;
 use lock_api::RawRwLockUpgradeFair;
 use lock_api::RawRwLockUpgradeTimed;
 
+use crate::util::PrivateTraced;
 use crate::LazyMutexId;
+use crate::MutexId;
 
 /// Tracing wrapper for all [`lock_api`] traits.
 ///
@@ -83,6 +85,12 @@ impl<T> TracingWrapper<T> {
             unsafe { self.mark_released() }
             false
         }
+    }
+}
+
+impl<T> PrivateTraced for TracingWrapper<T> {
+    fn get_id(&self) -> &MutexId {
+        &self.id
     }
 }
 
