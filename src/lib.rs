@@ -30,11 +30,16 @@
 //!
 //! - `backtraces`: Enables capturing backtraces of mutex dependencies, to make it easier to
 //!   determine what sequence of events would trigger a deadlock. This is enabled by default, but if
-//!   the performance overhead is unaccceptable, it can be disabled by disabling default features.
+//!   the performance overhead is unacceptable, it can be disabled by disabling default features.
 //!
 //! - `lockapi`: Enables the wrapper lock for [`lock_api`][lock_api] locks
 //!
 //! - `parkinglot`: Enables wrapper types for [`parking_lot`][parking_lot] mutexes
+//!
+//! - `experimental`: Enables experimental features. Experimental features are intended to test new
+//!   APIs and play with new APIs before committing to them. As such, breaking changes may be
+//!   introduced in it between otherwise semver-compatible versions, and the MSRV does not apply to
+//!   experimental features.
 //!
 //! # Performance considerations
 //!
@@ -99,6 +104,7 @@ pub mod lockapi;
 pub mod parkinglot;
 mod reporting;
 pub mod stdsync;
+pub mod util;
 
 thread_local! {
     /// Stack to track which locks are held
