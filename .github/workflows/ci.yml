@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         rust:
+          - "1.74" # Current minimum for experimental features
           - stable
           - beta
           - nightly
@@ -44,7 +45,8 @@ jobs:
         with:
           toolchain: "1.70"
 
-      - run: cargo test --all-features
+      # Test everything except experimental features.
+      - run: cargo test --features backtraces,lockapi,parkinglot
 
   docs:
     name: Documentation build

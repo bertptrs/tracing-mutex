@@ -37,6 +37,7 @@ required-features = ["parkinglot"]
 [features]
 default = ["backtraces"]
 backtraces = []
+experimental = []
 # Feature names do not match crate names pending namespaced features.
 lockapi = ["lock_api"]
 parkinglot = ["parking_lot", "lockapi"]

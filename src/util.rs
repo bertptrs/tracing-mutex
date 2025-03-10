@@ -37,6 +37,8 @@ use crate::MutexId;
 /// let _second_lock = second.lock().unwrap();
 /// first.lock().unwrap();
 /// ```
+#[cfg(feature = "experimental")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
 pub unsafe fn reset_dependencies<T: Traced>(traced: &T) {
     crate::get_dependency_graph().remove_node(traced.get_id().value());
 }
@@ -45,14 +47,19 @@ pub unsafe fn reset_dependencies<T: Traced>(traced: &T) {
 ///
 /// This trait is a public marker trait and is automatically implemented fore all types that
 /// implement the internal dependency tracking features.
+#[cfg(feature = "experimental")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
 #[allow(private_bounds)]
 pub trait Traced: PrivateTraced {}
 
+#[cfg(feature = "experimental")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
 impl<T: PrivateTraced> Traced for T {}
 
 /// Private implementation of the traced marker.
 ///
 /// This trait is private (and seals the outer trait) to avoid exposing the MutexId type.
+#[cfg_attr(not(feature = "experimental"), allow(unused))]
 pub(crate) trait PrivateTraced {
     /// Get the mutex id associated with this traced item.
     fn get_id(&self) -> &MutexId;
