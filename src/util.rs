@@ -1,3 +1,4 @@
+//! Utilities related to the internals of dependency tracking.
 use crate::MutexId;
 
 /// Reset the dependencies for the given entity.

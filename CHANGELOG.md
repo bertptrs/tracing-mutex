@@ -15,6 +15,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `tracing_mutex::parkinglot` is now identical to `parking_lot`, and an example showing how to use
   it as a drop-in replacement was added.
 
+- Introduced `experimental` feature, which will be used going forward to help evolve the API outside
+  the normal stability guarantees. APIs under this feature are not subject to semver or MSRV
+  guarantees.
+
+- Added experimental api `tracing_mutex::util::reset_dependencies`, which can be used to reset the
+  ordering information of a specific mutex when you need to reorder them. This API is unsafe, as its
+  use invalidates any of the deadlock prevention guarantees made.
+
 ### Changed
 
 - Reworked CI to better test continued support for the minimum supported Rust version
