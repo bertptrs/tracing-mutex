@@ -84,11 +84,19 @@ use std::sync::MutexGuard;
 use std::sync::OnceLock;
 use std::sync::PoisonError;
 
-#[cfg(feature = "lockapi")]
-#[cfg_attr(docsrs, doc(cfg(feature = "lockapi")))]
+#[cfg(feature = "lock_api")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lock_api")))]
+#[cfg_attr(
+    all(not(docsrs), feature = "lockapi"),
+    deprecated = "The `lockapi` feature has been renamed `lock_api`"
+)]
 pub use lock_api;
-#[cfg(feature = "parkinglot")]
-#[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
+#[cfg(feature = "parking_lot")]
+#[cfg_attr(docsrs, doc(cfg(feature = "parking_lot")))]
+#[cfg_attr(
+    all(not(docsrs), feature = "parkinglot"),
+    deprecated = "The `parkinglot` feature has been renamed `parking_lot`"
+)]
 pub use parking_lot;
 use reporting::Dep;
 use reporting::Reportable;
@@ -96,11 +104,19 @@ use reporting::Reportable;
 use crate::graph::DiGraph;
 
 mod graph;
-#[cfg(feature = "lockapi")]
-#[cfg_attr(docsrs, doc(cfg(feature = "lockapi")))]
+#[cfg(feature = "lock_api")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lock_api")))]
+#[cfg_attr(
+    all(not(docsrs), feature = "lockapi"),
+    deprecated = "The `lockapi` feature has been renamed `lock_api`"
+)]
 pub mod lockapi;
-#[cfg(feature = "parkinglot")]
-#[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
+#[cfg(feature = "parking_lot")]
+#[cfg_attr(docsrs, doc(cfg(feature = "parking_lot")))]
+#[cfg_attr(
+    all(not(docsrs), feature = "parkinglot"),
+    deprecated = "The `parkinglot` feature has been renamed `parking_lot`"
+)]
 pub mod parkinglot;
 mod reporting;
 pub mod stdsync;
