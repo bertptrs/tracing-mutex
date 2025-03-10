@@ -46,7 +46,7 @@ jobs:
           toolchain: "1.70"
 
       # Test everything except experimental features.
-      - run: cargo test --features backtraces,lockapi,parkinglot
+      - run: cargo test --features backtraces,lock_api,parking_lot
 
   docs:
     name: Documentation build
