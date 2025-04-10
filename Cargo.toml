@@ -42,8 +42,8 @@ lock_api = ["dep:lock_api"]
 parking_lot = ["dep:parking_lot", "lock_api"]
 
 # Deprecated feature names from when cargo couldn't distinguish between dep and feature
-lockapi = ["lock_api"]
-parkinglot = ["parking_lot"]
+lockapi = ["dep:lock_api"]
+parkinglot = ["dep:parking_lot", "lock_api"]
 
 [build-dependencies]
 autocfg = "1.4.0"

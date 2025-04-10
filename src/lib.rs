@@ -85,36 +85,30 @@ use std::sync::OnceLock;
 use std::sync::PoisonError;
 
 #[cfg(feature = "lock_api")]
-#[cfg_attr(docsrs, doc(cfg(feature = "lock_api")))]
-#[cfg_attr(
-    all(not(docsrs), feature = "lockapi"),
-    deprecated = "The `lockapi` feature has been renamed `lock_api`"
-)]
+#[cfg_attr(docsrs, doc(cfg(feature = "lockapi")))]
+#[deprecated = "The top-level re-export `lock_api` is deprecated. Use `tracing_mutex::lockapi::raw` instead"]
 pub use lock_api;
 #[cfg(feature = "parking_lot")]
-#[cfg_attr(docsrs, doc(cfg(feature = "parking_lot")))]
-#[cfg_attr(
-    all(not(docsrs), feature = "parkinglot"),
-    deprecated = "The `parkinglot` feature has been renamed `parking_lot`"
-)]
+#[cfg_attr(docsrs, doc(cfg(feature = "parkinglot")))]
+#[deprecated = "The top-level re-export `parking_lot` is deprecated. Use `tracing_mutex::parkinglot::raw` instead"]
 pub use parking_lot;
+
+use graph::DiGraph;
 use reporting::Dep;
 use reporting::Reportable;
 
-use crate::graph::DiGraph;
-
 mod graph;
-#[cfg(feature = "lock_api")]
+#[cfg(any(feature = "lock_api", feature = "lockapi"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "lock_api")))]
 #[cfg_attr(
-    all(not(docsrs), feature = "lockapi"),
+    all(not(docsrs), feature = "lockapi", not(feature = "lock_api")),
     deprecated = "The `lockapi` feature has been renamed `lock_api`"
 )]
 pub mod lockapi;
-#[cfg(feature = "parking_lot")]
+#[cfg(any(feature = "parking_lot", feature = "parkinglot"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "parking_lot")))]
 #[cfg_attr(
-    all(not(docsrs), feature = "parkinglot"),
+    all(not(docsrs), feature = "parkinglot", not(feature = "parking_lot")),
     deprecated = "The `parkinglot` feature has been renamed `parking_lot`"
 )]
 pub mod parkinglot;

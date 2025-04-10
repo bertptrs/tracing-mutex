@@ -8,6 +8,7 @@
 //! Wrapped mutexes are at least one `usize` larger than the types they wrapped, and must be aligned
 //! to `usize` boundaries. As such, libraries with many mutexes may want to consider the additional
 //! required memory.
+pub use lock_api as raw;
 use lock_api::GuardNoSend;
 use lock_api::RawMutex;
 use lock_api::RawMutexFair;
