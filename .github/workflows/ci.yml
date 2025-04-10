@@ -30,6 +30,8 @@ jobs:
 
       # Make sure we test with recent deps
       - run: cargo update
+        # Note: some crates broke BC with 1.74 so we use the locked deps
+        if: "${{ matrix.rust != '1.74' }}"
       - run: cargo build --all-features --all-targets
       - run: cargo test --all-features
       - run: cargo fmt --all -- --check
