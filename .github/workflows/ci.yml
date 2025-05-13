@@ -35,6 +35,8 @@ jobs:
       - run: cargo build --all-features --all-targets
       - run: cargo test --all-features
       - run: cargo fmt --all -- --check
+        # Note: Rust 1.74 doesn't understand edition 2024 formatting so no point
+        if: "${{ matrix.rust != '1.74' }}"
       - run: cargo clippy --all-features --all-targets -- -D warnings
 
   msrv:

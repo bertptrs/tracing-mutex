@@ -2,8 +2,8 @@
 pub use parking_lot::OnceState;
 pub use parking_lot::RawThreadId;
 
-use crate::lockapi::TracingWrapper;
 use crate::LazyMutexId;
+use crate::lockapi::TracingWrapper;
 
 pub type RawFairMutex = TracingWrapper<::parking_lot::RawFairMutex>;
 pub type RawMutex = TracingWrapper<::parking_lot::RawMutex>;

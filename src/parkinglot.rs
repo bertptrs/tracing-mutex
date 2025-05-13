@@ -49,18 +49,18 @@ pub mod tracing;
 
 #[cfg(debug_assertions)]
 pub use tracing::{
-    const_fair_mutex, const_mutex, const_reentrant_mutex, const_rwlock, FairMutex, FairMutexGuard,
-    MappedFairMutexGuard, MappedMutexGuard, MappedReentrantMutexGuard, MappedRwLockReadGuard,
-    MappedRwLockWriteGuard, Mutex, MutexGuard, Once, RawFairMutex, RawMutex, RawRwLock,
-    ReentrantMutex, ReentrantMutexGuard, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
-    RwLockWriteGuard,
+    FairMutex, FairMutexGuard, MappedFairMutexGuard, MappedMutexGuard, MappedReentrantMutexGuard,
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, Mutex, MutexGuard, Once, RawFairMutex, RawMutex,
+    RawRwLock, ReentrantMutex, ReentrantMutexGuard, RwLock, RwLockReadGuard,
+    RwLockUpgradableReadGuard, RwLockWriteGuard, const_fair_mutex, const_mutex,
+    const_reentrant_mutex, const_rwlock,
 };
 
 #[cfg(not(debug_assertions))]
 pub use parking_lot::{
-    const_fair_mutex, const_mutex, const_reentrant_mutex, const_rwlock, FairMutex, FairMutexGuard,
-    MappedFairMutexGuard, MappedMutexGuard, MappedReentrantMutexGuard, MappedRwLockReadGuard,
-    MappedRwLockWriteGuard, Mutex, MutexGuard, Once, RawFairMutex, RawMutex, RawRwLock,
-    ReentrantMutex, ReentrantMutexGuard, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
-    RwLockWriteGuard,
+    FairMutex, FairMutexGuard, MappedFairMutexGuard, MappedMutexGuard, MappedReentrantMutexGuard,
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, Mutex, MutexGuard, Once, RawFairMutex, RawMutex,
+    RawRwLock, ReentrantMutex, ReentrantMutexGuard, RwLock, RwLockReadGuard,
+    RwLockUpgradableReadGuard, RwLockWriteGuard, const_fair_mutex, const_mutex,
+    const_reentrant_mutex, const_rwlock,
 };

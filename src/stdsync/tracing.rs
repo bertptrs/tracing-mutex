@@ -10,9 +10,9 @@ use std::sync::TryLockResult;
 use std::sync::WaitTimeoutResult;
 use std::time::Duration;
 
-use crate::util::PrivateTraced;
 use crate::BorrowedMutex;
 use crate::LazyMutexId;
+use crate::util::PrivateTraced;
 
 #[cfg(has_std__sync__LazyLock)]
 pub use lazy_lock::LazyLock;

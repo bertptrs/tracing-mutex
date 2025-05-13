@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use criterion::criterion_group;
-use criterion::criterion_main;
 use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
+use criterion::criterion_group;
+use criterion::criterion_main;
 use rand::prelude::*;
 use tracing_mutex::stdsync::tracing::Mutex as TracingMutex;
 

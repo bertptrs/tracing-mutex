@@ -77,12 +77,12 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::OnceLock;
 use std::sync::PoisonError;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 
 #[cfg(feature = "lock_api")]
 #[cfg_attr(docsrs, doc(cfg(feature = "lockapi")))]
@@ -351,9 +351,11 @@ mod tests {
         drop(b);
 
         // If b's destructor correctly ran correctly we can now add an edge from c to a.
-        assert!(get_dependency_graph()
-            .add_edge(c.value(), a.value(), Dep::capture)
-            .is_ok());
+        assert!(
+            get_dependency_graph()
+                .add_edge(c.value(), a.value(), Dep::capture)
+                .is_ok()
+        );
     }
 
     /// Test creating a cycle, then panicking.
