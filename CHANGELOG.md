@@ -27,6 +27,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Reworked CI to better test continued support for the minimum supported Rust version
 
+### Fixed
+
+- Support for `parking_lot` and `lock_api` can now be enabled properly with the matching feature
+  names.
+
+### Deprecated
+
+- The `parkinglot` and `lockapi` features have been deprecated. They will be removed in version 0.4.
+  To fix it, you can use the `parking_lot` and `lock_api` features respectively.
+
 ## [0.3.0] - 2023-09-09
 
 ### Added
