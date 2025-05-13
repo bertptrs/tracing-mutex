@@ -1,7 +1,7 @@
 use std::cell::Cell;
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
 type Order = usize;

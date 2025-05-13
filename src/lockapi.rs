@@ -24,9 +24,9 @@ use lock_api::RawRwLockUpgradeDowngrade;
 use lock_api::RawRwLockUpgradeFair;
 use lock_api::RawRwLockUpgradeTimed;
 
-use crate::util::PrivateTraced;
 use crate::LazyMutexId;
 use crate::MutexId;
+use crate::util::PrivateTraced;
 
 /// Tracing wrapper for all [`lock_api`] traits.
 ///
