@@ -79,7 +79,7 @@ impl<T> Mutex<T> {
     /// This method participates in lock dependency tracking. If acquiring this lock introduces a
     /// dependency cycle, this method will panic.
     #[track_caller]
-    pub fn lock(&self) -> LockResult<MutexGuard<T>> {
+    pub fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.lock();
 
@@ -98,7 +98,7 @@ impl<T> Mutex<T> {
     /// This method participates in lock dependency tracking. If acquiring this lock introduces a
     /// dependency cycle, this method will panic.
     #[track_caller]
-    pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
+    pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.try_lock();
 
@@ -308,7 +308,7 @@ impl<T> RwLock<T> {
     /// This method participates in lock dependency tracking. If acquiring this lock introduces a
     /// dependency cycle, this method will panic.
     #[track_caller]
-    pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
+    pub fn read(&self) -> LockResult<RwLockReadGuard<'_, T>> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.read();
 
@@ -325,7 +325,7 @@ impl<T> RwLock<T> {
     /// This method participates in lock dependency tracking. If acquiring this lock introduces a
     /// dependency cycle, this method will panic.
     #[track_caller]
-    pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
+    pub fn write(&self) -> LockResult<RwLockWriteGuard<'_, T>> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.write();
 
@@ -342,7 +342,7 @@ impl<T> RwLock<T> {
     /// This method participates in lock dependency tracking. If acquiring this lock introduces a
     /// dependency cycle, this method will panic.
     #[track_caller]
-    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
+    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<'_, T>> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.try_read();
 
@@ -359,7 +359,7 @@ impl<T> RwLock<T> {
     /// This method participates in lock dependency tracking. If acquiring this lock introduces a
     /// dependency cycle, this method will panic.
     #[track_caller]
-    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
+    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<'_, T>> {
         let mutex = self.id.get_borrowed();
         let result = self.inner.try_write();
 

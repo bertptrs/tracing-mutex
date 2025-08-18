@@ -163,7 +163,7 @@ impl MutexId {
     /// # Panics
     ///
     /// This method panics if the new dependency would introduce a cycle.
-    pub fn get_borrowed(&self) -> BorrowedMutex {
+    pub fn get_borrowed(&self) -> BorrowedMutex<'_> {
         self.mark_held();
         BorrowedMutex {
             id: self,
