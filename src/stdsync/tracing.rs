@@ -25,9 +25,9 @@ mod lazy_lock;
 /// Refer to the [crate-level][`crate`] documentation for the differences between this struct and
 /// the one it wraps.
 #[derive(Debug, Default)]
-pub struct Mutex<T> {
-    inner: sync::Mutex<T>,
+pub struct Mutex<T: ?Sized> {
     id: LazyMutexId,
+    inner: sync::Mutex<T>,
 }
 
 /// Wrapper for [`std::sync::MutexGuard`].
@@ -35,7 +35,7 @@ pub struct Mutex<T> {
 /// Refer to the [crate-level][`crate`] documentation for the differences between this struct and
 /// the one it wraps.
 #[derive(Debug)]
-pub struct MutexGuard<'a, T> {
+pub struct MutexGuard<'a, T: ?Sized> {
     inner: sync::MutexGuard<'a, T>,
     _mutex: BorrowedMutex<'a>,
 }
@@ -71,7 +71,9 @@ impl<T> Mutex<T> {
             id: LazyMutexId::new(),
         }
     }
+}
 
+impl<T: ?Sized> Mutex<T> {
     /// Wrapper for [`std::sync::Mutex::lock`].
     ///
     /// # Panics
@@ -123,12 +125,15 @@ impl<T> Mutex<T> {
     }
 
     /// Unwrap the mutex and return its inner value.
-    pub fn into_inner(self) -> LockResult<T> {
+    pub fn into_inner(self) -> LockResult<T>
+    where
+        T: Sized,
+    {
         self.inner.into_inner()
     }
 }
 
-impl<T> PrivateTraced for Mutex<T> {
+impl<T: ?Sized> PrivateTraced for Mutex<T> {
     fn get_id(&self) -> &crate::MutexId {
         &self.id
     }
@@ -140,7 +145,7 @@ impl<T> From<T> for Mutex<T> {
     }
 }
 
-impl<T> Deref for MutexGuard<'_, T> {
+impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -148,13 +153,13 @@ impl<T> Deref for MutexGuard<'_, T> {
     }
 }
 
-impl<T> DerefMut for MutexGuard<'_, T> {
+impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<T: fmt::Display> fmt::Display for MutexGuard<'_, T> {
+impl<T: fmt::Display + ?Sized> fmt::Display for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
@@ -274,9 +279,9 @@ impl Condvar {
 
 /// Wrapper for [`std::sync::RwLock`].
 #[derive(Debug, Default)]
-pub struct RwLock<T> {
-    inner: sync::RwLock<T>,
+pub struct RwLock<T: ?Sized> {
     id: LazyMutexId,
+    inner: sync::RwLock<T>,
 }
 
 /// Hybrid wrapper for both [`std::sync::RwLockReadGuard`] and [`std::sync::RwLockWriteGuard`].
@@ -300,7 +305,9 @@ impl<T> RwLock<T> {
             id: LazyMutexId::new(),
         }
     }
+}
 
+impl<T: ?Sized> RwLock<T> {
     /// Wrapper for [`std::sync::RwLock::read`].
     ///
     /// # Panics
@@ -377,12 +384,15 @@ impl<T> RwLock<T> {
     }
 
     /// Unwrap the mutex and return its inner value.
-    pub fn into_inner(self) -> LockResult<T> {
+    pub fn into_inner(self) -> LockResult<T>
+    where
+        T: Sized,
+    {
         self.inner.into_inner()
     }
 }
 
-impl<T> PrivateTraced for RwLock<T> {
+impl<T: ?Sized> PrivateTraced for RwLock<T> {
     fn get_id(&self) -> &crate::MutexId {
         &self.id
     }
@@ -396,6 +406,7 @@ impl<T> From<T> for RwLock<T> {
 
 impl<L, T> Deref for TracingRwLockGuard<'_, L>
 where
+    T: ?Sized,
     L: Deref<Target = T>,
 {
     type Target = T;
@@ -405,8 +416,9 @@ where
     }
 }
 
-impl<T, L> DerefMut for TracingRwLockGuard<'_, L>
+impl<L, T> DerefMut for TracingRwLockGuard<'_, L>
 where
+    T: ?Sized,
     L: Deref<Target = T> + DerefMut,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {

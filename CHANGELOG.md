@@ -6,6 +6,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `std::sync` wrappers now no longer incorrectly require `T: Sized`
+
 ## [0.3.1]
 
 ### Added
