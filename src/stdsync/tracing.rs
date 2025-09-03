@@ -34,7 +34,6 @@ pub struct Mutex<T: ?Sized> {
 ///
 /// Refer to the [crate-level][`crate`] documentation for the differences between this struct and
 /// the one it wraps.
-#[derive(Debug)]
 pub struct MutexGuard<'a, T: ?Sized> {
     inner: sync::MutexGuard<'a, T>,
     _mutex: BorrowedMutex<'a>,
@@ -148,18 +147,28 @@ impl<T> From<T> for Mutex<T> {
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
+impl<T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'_, T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
 impl<T: fmt::Display + ?Sized> fmt::Display for MutexGuard<'_, T> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
@@ -287,7 +296,6 @@ pub struct RwLock<T: ?Sized> {
 /// Hybrid wrapper for both [`std::sync::RwLockReadGuard`] and [`std::sync::RwLockWriteGuard`].
 ///
 /// Please refer to [`RwLockReadGuard`] and [`RwLockWriteGuard`] for usable types.
-#[derive(Debug)]
 pub struct TracingRwLockGuard<'a, L> {
     inner: L,
     _mutex: BorrowedMutex<'a>,
@@ -411,6 +419,7 @@ where
 {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.inner.deref()
     }
@@ -421,8 +430,29 @@ where
     T: ?Sized,
     L: Deref<Target = T> + DerefMut,
 {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.inner.deref_mut()
+    }
+}
+
+impl<L> fmt::Debug for TracingRwLockGuard<'_, L>
+where
+    L: fmt::Debug,
+{
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+impl<L> fmt::Display for TracingRwLockGuard<'_, L>
+where
+    L: fmt::Display,
+{
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 
