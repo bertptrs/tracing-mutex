@@ -10,6 +10,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `std::sync` wrappers now no longer incorrectly require `T: Sized`
 
+- Added missing `Display` and `Debug` implementations to `RwLock(Read|Write)Guard`.
+
 ## [0.3.1]
 
 ### Added
