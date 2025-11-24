@@ -47,6 +47,8 @@ pub use parking_lot::WaitTimeoutResult;
 
 pub mod tracing;
 
+// Skip reformatting the combined imports as it duplicates the guards
+#[rustfmt::skip]
 #[cfg(debug_assertions)]
 pub use tracing::{
     FairMutex, FairMutexGuard, MappedFairMutexGuard, MappedMutexGuard, MappedReentrantMutexGuard,
@@ -56,6 +58,7 @@ pub use tracing::{
     const_reentrant_mutex, const_rwlock,
 };
 
+#[rustfmt::skip]
 #[cfg(not(debug_assertions))]
 pub use parking_lot::{
     FairMutex, FairMutexGuard, MappedFairMutexGuard, MappedMutexGuard, MappedReentrantMutexGuard,
