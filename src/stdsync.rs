@@ -20,11 +20,14 @@
 //! ```
 pub use std::sync as raw;
 
+// Skip reformatting the combined imports as it duplicates the guards
+#[rustfmt::skip]
 #[cfg(not(debug_assertions))]
 pub use std::sync::{
     Condvar, Mutex, MutexGuard, Once, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
 
+#[rustfmt::skip]
 #[cfg(debug_assertions)]
 pub use tracing::{
     Condvar, Mutex, MutexGuard, Once, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard,
