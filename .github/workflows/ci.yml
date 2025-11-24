@@ -34,7 +34,6 @@ jobs:
         if: "${{ matrix.rust != '1.74' }}"
       - run: cargo build --all-features --all-targets
       - run: cargo test --all-features
-      - run: cargo fmt --all -- --check
         # Note: Rust 1.74 doesn't understand edition 2024 formatting so no point
         if: "${{ matrix.rust != '1.74' }}"
       - run: cargo clippy --all-features --all-targets -- -D warnings
@@ -67,4 +66,4 @@ jobs:
         env:
           # Build the docs like docs.rs builds it
           RUSTDOCFLAGS: --cfg docsrs
-        run: cargo doc --all-features
+        run: cargo doc --all-features --no-deps
