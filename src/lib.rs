@@ -15,6 +15,11 @@
 //! This conflicting dependency is not added to the graph, so future attempts at locking should
 //! succeed as normal.
 //!
+//! You can suppress panics by calling [`suppress_panics`]. This will cause the crate to print the
+//! cycle to stderr instead of panicking. This is useful for incrementally adopting tracing-mutex to
+//! a large codebase compiled with `panic=abort`, as it allows you to continue running your program
+//! even when a cycle is detected.
+//!
 //! # Structure
 //!
 //! Each module in this crate exposes wrappers for a specific base-mutex with dependency trakcing
@@ -116,6 +121,8 @@ mod reporting;
 pub mod stdsync;
 pub mod util;
 
+pub use reporting::suppress_panics;
+
 thread_local! {
     /// Stack to track which locks are held
     ///
@@ -188,7 +195,7 @@ impl MutexId {
         });
 
         if let Some(cycle) = opt_cycle {
-            panic!("{}", Dep::panic_message(&cycle))
+            reporting::report_cycle(&cycle);
         }
 
         HELD_LOCKS.with(|locks| locks.borrow_mut().push(self.value()));
