@@ -116,6 +116,9 @@ mod reporting;
 pub mod stdsync;
 pub mod util;
 
+#[cfg(feature = "experimental")]
+pub use reporting::{set_panic_action, PanicAction};
+
 thread_local! {
     /// Stack to track which locks are held
     ///
@@ -188,7 +191,7 @@ impl MutexId {
         });
 
         if let Some(cycle) = opt_cycle {
-            panic!("{}", Dep::panic_message(&cycle))
+            reporting::report_cycle(&cycle);
         }
 
         HELD_LOCKS.with(|locks| locks.borrow_mut().push(self.value()));
