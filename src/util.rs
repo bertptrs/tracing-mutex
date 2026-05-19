@@ -1,5 +1,8 @@
 //! Utilities related to the internals of dependency tracking.
 use crate::MutexId;
+#[cfg(feature = "experimental")]
+#[cfg(feature = "experimental")]
+use crate::reporting::cycle_handler_storage;
 
 /// Reset the dependencies for the given entity.
 ///
@@ -42,6 +45,44 @@ use crate::MutexId;
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
 pub unsafe fn reset_dependencies<T: Traced>(traced: &T) {
     crate::get_dependency_graph().remove_node(traced.get_id().value());
+}
+
+/// Install a new cycle handler
+///
+/// This function will be called whenever a cycle in the dependency graph is detected. The default
+/// handler will panic with a message describing the panic, but this can be downgraded to logging,
+/// or even some complicated reporting mechanism.
+///
+/// ```
+/// # use tracing_mutex::util::set_cycle_handler;
+/// let mut logged = false;
+///
+/// set_cycle_handler(move |message| {
+///     if !logged {
+///         logged = true;
+///         eprintln!("{message}");
+///     }
+/// });
+/// ```
+///
+/// This handler can be reset to its original state via [`reset_cycle_handler`].
+#[cfg(feature = "experimental")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
+pub fn set_cycle_handler<T>(handler: T)
+where
+    T: FnMut(&str) + Send + Sync + 'static,
+{
+    *cycle_handler_storage() = Some(Box::new(handler))
+}
+
+/// Reset cycle handler to its original state
+///
+/// This function returns `true` if a custom handler was previously installed, and `false`
+/// otherwise.
+#[cfg(feature = "experimental")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental")))]
+pub fn reset_cycle_handler() -> bool {
+    cycle_handler_storage().take().is_some()
 }
 
 /// Types that participate in dependency tracking
