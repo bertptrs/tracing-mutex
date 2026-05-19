@@ -44,12 +44,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@1.74
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.70"
 
       # Test everything except experimental features.
-      - run: cargo test --features backtraces,lock_api,parking_lot
+      - run: cargo test --locked --features backtraces,lock_api,parking_lot
 
   formatting:
     name: Formatting
@@ -57,8 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       # Use nightly formatting options
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: nightly
           components: rustfmt
       - run: cargo fmt --check
 
@@ -69,7 +70,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
 
       - name: Build documentation
         env:
