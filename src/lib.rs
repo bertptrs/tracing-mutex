@@ -319,7 +319,7 @@ fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize, Dep>> {
 #[cfg(test)]
 mod tests {
     use rand::seq::SliceRandom;
-    use rand::thread_rng;
+    use rand::rng;
 
     use super::*;
 
@@ -391,7 +391,7 @@ mod tests {
             }
         }
 
-        edges.shuffle(&mut thread_rng());
+        edges.shuffle(&mut rng());
 
         for (x, y) in edges {
             // Acquire the mutexes, smallest first to ensure a cycle-free graph
