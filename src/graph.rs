@@ -262,7 +262,7 @@ where
 #[cfg(test)]
 mod tests {
     use rand::seq::SliceRandom;
-    use rand::thread_rng;
+    use rand::rng;
 
     use super::*;
 
@@ -314,7 +314,7 @@ mod tests {
             }
         }
 
-        edges.shuffle(&mut thread_rng());
+        edges.shuffle(&mut rng());
 
         let mut graph = DiGraph::default();
 
