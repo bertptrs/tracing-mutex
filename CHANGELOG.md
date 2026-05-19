@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- (experimental) allow the library consumer to override what should happen when the system detects a
+  cycle.
+
 ## [0.3.2]
 
 ### Fixed
