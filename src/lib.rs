@@ -318,8 +318,8 @@ fn get_dependency_graph() -> impl DerefMut<Target = DiGraph<usize, Dep>> {
 
 #[cfg(test)]
 mod tests {
-    use rand::seq::SliceRandom;
     use rand::rng;
+    use rand::seq::SliceRandom;
 
     use super::*;
 

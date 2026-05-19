@@ -261,8 +261,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use rand::seq::SliceRandom;
     use rand::rng;
+    use rand::seq::SliceRandom;
 
     use super::*;
 
