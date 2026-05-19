@@ -116,9 +116,6 @@ mod reporting;
 pub mod stdsync;
 pub mod util;
 
-#[cfg(feature = "experimental")]
-pub use reporting::{set_panic_action, PanicAction};
-
 thread_local! {
     /// Stack to track which locks are held
     ///

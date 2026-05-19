@@ -6,46 +6,33 @@ use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU8;
-use std::sync::atomic::Ordering;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
+use std::sync::PoisonError;
 
 #[cfg(feature = "backtraces")]
 pub type Dep = MutexDep<Arc<Backtrace>>;
 #[cfg(not(feature = "backtraces"))]
 pub type Dep = MutexDep<()>;
 
+pub(crate) type CycleHandler = Option<Box<dyn FnMut(&str) + Send + Sync>>;
+
 // Base message to be reported when cycle is detected
 const BASE_MESSAGE: &str = "Found cycle in mutex dependency graph:";
 
-/// Action to take when a cycle is detected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum PanicAction {
-    /// Panic when a cycle is detected.
-    Panic = 0,
-    /// Log the cycle to stderr but do not panic.
-    #[cfg(feature = "experimental")]
-    Log = 1,
-}
+pub(crate) fn cycle_handler_storage() -> MutexGuard<'static, CycleHandler> {
+    static CYCLE_HANDLER: Mutex<CycleHandler> = Mutex::new(None);
 
-static PANIC_ACTION: AtomicU8 = AtomicU8::new(0);
-
-/// Set the action to take when a cycle is detected.
-///
-/// This is useful for incrementally adopting tracing-mutex to a large codebase compiled with
-/// `panic=abort`, as it allows you to continue running your program even when a cycle is detected.
-#[cfg(feature = "experimental")]
-pub fn set_panic_action(action: PanicAction) {
-    PANIC_ACTION.store(action as u8, Ordering::Relaxed);
+    CYCLE_HANDLER.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 pub(crate) fn report_cycle(cycle: &[Dep]) {
     let message = Dep::message(cycle);
-    let action = PANIC_ACTION.load(Ordering::Relaxed);
-    if action == PanicAction::Panic as u8 {
-        panic!("{message}");
+
+    if let Some(handler) = cycle_handler_storage().as_mut() {
+        handler(&message);
     } else {
-        eprintln!("{message}");
+        panic!("{message}");
     }
 }
 
